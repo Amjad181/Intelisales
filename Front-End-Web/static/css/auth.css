@@ -1,0 +1,415 @@
+:root {
+  --bg: #eef2f7;
+  --brand-bg: #132339;
+  --panel: #ffffff;
+  --text: #14233a;
+  --muted: #5c6b83;
+  --primary: #1e5eff;
+  --primary-hover: #174bcc;
+  --border: #d5deeb;
+  --danger: #c62828;
+  --success: #0d7a48;
+  --stat-bg: #1b2f4d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Noto Sans Arabic", Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+html[dir="rtl"] body {
+  font-family: "Noto Sans Arabic", "Inter", Arial, Helvetica, sans-serif;
+}
+
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+}
+
+.brand-panel {
+  background: var(--brand-bg);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem;
+}
+
+.brand-content {
+  max-width: 520px;
+}
+
+.brand-pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  margin-bottom: 1rem;
+  color: #c9d8f0;
+}
+
+.brand-content h1 {
+  margin: 0 0 0.9rem;
+  font-size: 2.15rem;
+  line-height: 1.2;
+}
+
+.brand-content p {
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+  color: #c9d8f0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.stat-card {
+  background: var(--stat-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.85rem;
+}
+
+.stat-card h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #9db5d8;
+}
+
+.form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem;
+}
+
+.form-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 12px 30px rgba(15, 26, 42, 0.08);
+}
+
+.form-header h2 {
+  margin: 0 0 0.5rem;
+}
+
+.form-header p {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.93rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+html[dir="rtl"] .field label {
+  text-align: right;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding-inline: 0.9rem;
+  font-size: 0.93rem;
+  background: #fbfcfe;
+  color: var(--text);
+  text-align: left;
+}
+
+html[dir="rtl"] .field input,
+html[dir="rtl"] .field select {
+  text-align: right;
+  direction: rtl;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 2px solid rgba(30, 94, 255, 0.2);
+  border-color: var(--primary);
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-inline-end: 4.75rem;
+}
+
+html[dir="rtl"] .password-wrapper input {
+  padding-inline-start: 4.75rem;
+  padding-inline-end: 0.9rem;
+}
+
+.login-lang-mount {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+html[dir="rtl"] .login-lang-mount {
+  justify-content: flex-start;
+}
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.lang-switch__btn {
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.lang-switch__btn:hover {
+  background: #e8efff;
+}
+
+.lang-switch__btn.is-active {
+  background: #e8efff;
+  color: var(--primary);
+}
+
+.toggle-button {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: #e8efff;
+  color: var(--primary);
+  font-weight: 600;
+  border-radius: 8px;
+  height: 30px;
+  min-width: 55px;
+  cursor: pointer;
+}
+
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+}
+
+.muted-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.muted-link:hover {
+  text-decoration: underline;
+}
+
+.primary-btn {
+  border: none;
+  border-radius: 12px;
+  height: 46px;
+  background: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.primary-btn:hover {
+  background: var(--primary-hover);
+}
+
+.primary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-text {
+  min-height: 1rem;
+  display: block;
+  color: var(--danger);
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.status-text {
+  margin: 0.2rem 0 0;
+  min-height: 1rem;
+  color: var(--success);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 900px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    min-height: 280px;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-layout {
+    min-height: auto;
+  }
+
+  .brand-panel {
+    min-height: 240px;
+    padding: 1.5rem;
+  }
+
+  .brand-content h1 {
+    font-size: 1.8rem;
+  }
+
+  .form-panel {
+    padding: 1.5rem;
+  }
+
+  .form-card {
+    max-width: none;
+    padding: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .stat-card {
+    padding: 0.7rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .form-panel,
+  .brand-panel {
+    padding: 1.2rem;
+  }
+
+  .form-card {
+    border-radius: 14px;
+    padding: 1.35rem;
+  }
+
+  .brand-content h1 {
+    font-size: 1.6rem;
+  }
+
+  .brand-content p {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-panel {
+    min-height: 200px;
+    padding: 1rem;
+  }
+
+  .brand-content h1 {
+    font-size: 1.4rem;
+  }
+
+  .form-card {
+    padding: 1rem;
+  }
+
+  .form-header h2 {
+    font-size: 1.2rem;
+  }
+}
+
+html[dir="rtl"] .brand-panel {
+  grid-column: 1;
+}
+
+html[dir="rtl"] .form-panel {
+  grid-column: 2;
+}
+
+html[dir="rtl"] .toggle-button {
+  right: auto;
+  left: 0.75rem;
+}
+
+html[dir="rtl"] .brand-content,
+html[dir="rtl"] .form-header,
+html[dir="rtl"] .field,
+html[dir="rtl"] .field label,
+html[dir="rtl"] .form-options {
+  text-align: right;
+}
+
+html[dir="rtl"] .checkbox {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .error-text,
+html[dir="rtl"] .status-text {
+  text-align: right;
+}
+
+html[dir="rtl"] .form-options {
+  flex-direction: row-reverse;
+}
+
+@media (max-width: 900px) {
+  html[dir="rtl"] .brand-panel,
+  html[dir="rtl"] .form-panel {
+    grid-column: auto;
+  }
+}

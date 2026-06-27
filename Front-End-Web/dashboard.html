@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntelliSales | Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./static/css/dashboard.css" />
+  </head>
+  <body>
+    <div class="dashboard-layout">
+      <aside class="sidebar" id="sidebarMount"></aside>
+
+      <main class="dashboard-main">
+        <header class="topbar" id="topbarMount"></header>
+        <section id="pageMount"></section>
+      </main>
+    </div>
+    <div id="modalMount" class="modal-root" aria-live="polite"></div>
+    <script type="module" src="./static/js/dashboard/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntelliSales | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./static/css/auth.css" />
+  </head>
+  <body>
+    <main class="auth-layout">
+      <section class="brand-panel" aria-label="">
+        <div class="brand-content">
+          <span class="brand-pill" data-i18n="login.brandPill"></span>
+          <h1 data-i18n="login.headline"></h1>
+          <p data-i18n="login.sub"></p>
+          <div class="stats-grid">
+            <article class="stat-card">
+              <h3>+24%</h3>
+              <p data-i18n="login.statGrowth"></p>
+            </article>
+            <article class="stat-card">
+              <h3>98.3%</h3>
+              <p data-i18n="login.statAccuracy"></p>
+            </article>
+            <article class="stat-card">
+              <h3>5 min</h3>
+              <p data-i18n="login.statField"></p>
+            </article>
+            <article class="stat-card">
+              <h3 data-i18n="login.statLive"></h3>
+              <p data-i18n="login.statSync"></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-panel">
+        <div class="form-card">
+          <div id="loginLangMount" class="login-lang-mount"></div>
+          <header class="form-header">
+            <h2 data-i18n="login.signIn"></h2>
+            <p data-i18n="login.welcome"></p>
+          </header>
+
+          <form id="loginForm" class="auth-form" novalidate>
+            <div class="field">
+              <label for="role" data-i18n="login.role"></label>
+              <select id="role" name="role" required></select>
+              <small class="error-text" id="roleError"></small>
+            </div>
+
+            <div class="field">
+              <label for="email" data-i18n="login.email"></label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                data-i18n-placeholder="login.emailPh"
+                autocomplete="email"
+                required
+              />
+              <small class="error-text" id="emailError"></small>
+            </div>
+
+            <div class="field">
+              <label for="password" data-i18n="login.password"></label>
+              <div class="password-wrapper">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  data-i18n-placeholder="login.passwordPh"
+                  autocomplete="current-password"
+                  required
+                />
+                <button
+                  id="togglePassword"
+                  class="toggle-button"
+                  type="button"
+                  aria-label=""
+                >
+                  Show
+                </button>
+              </div>
+              <small class="error-text" id="passwordError"></small>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox">
+                <input type="checkbox" name="rememberMe" />
+                <span data-i18n="login.remember"></span>
+              </label>
+              <a href="#" class="muted-link" data-i18n="login.forgot"></a>
+            </div>
+
+            <button id="submitButton" class="primary-btn" type="submit" data-i18n="login.submit"></button>
+            <p id="formStatus" class="status-text" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./static/js/auth/loginPage.js"></script>
+  </body>
+</html>
