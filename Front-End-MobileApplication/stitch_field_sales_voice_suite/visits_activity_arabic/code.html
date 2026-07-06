@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="light" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f9f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#38475f",
+                    "on-tertiary-fixed-variant": "#00522e",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "secondary-fixed": "#d5e3ff",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#97f7b9",
+                    "on-secondary-container": "#54637c",
+                    "surface": "#f9f9ff",
+                    "inverse-on-surface": "#ebf1ff",
+                    "on-secondary": "#ffffff",
+                    "outline": "#737688",
+                    "surface-variant": "#d4e3ff",
+                    "on-primary-fixed-variant": "#003ab2",
+                    "surface-tint": "#004ee8",
+                    "surface-container-highest": "#d4e3ff",
+                    "on-primary-fixed": "#001550",
+                    "primary": "#0047d3",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-primary-container": "#f0f0ff",
+                    "primary-container": "#1e5eff",
+                    "on-background": "#0c1c30",
+                    "secondary": "#505f78",
+                    "outline-variant": "#c3c5d9",
+                    "on-tertiary-container": "#c7ffd6",
+                    "tertiary": "#006338",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed-dim": "#7bda9e",
+                    "surface-container-high": "#dde9ff",
+                    "surface-container-low": "#eff3ff",
+                    "surface-dim": "#cbdbf7",
+                    "on-surface": "#0c1c30",
+                    "secondary-fixed-dim": "#b7c7e4",
+                    "inverse-primary": "#b6c4ff",
+                    "tertiary-container": "#157e4c",
+                    "primary-fixed": "#dce1ff",
+                    "inverse-surface": "#223146",
+                    "secondary-container": "#d1e0fe",
+                    "error": "#ba1a1a",
+                    "surface-container": "#e6eeff",
+                    "background": "#f9f9ff",
+                    "on-secondary-fixed": "#0b1c32",
+                    "on-surface-variant": "#434656",
+                    "on-tertiary-fixed": "#00210f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "gutter": "12px",
+                    "container-padding": "16px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "xl": "32px",
+                    "sm": "8px"
+            },
+            "fontFamily": {
+                    "title-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            right: 19px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #d1d9e6;
+            z-index: 0;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-[#eef2f7] text-on-surface font-body-md min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-container-padding h-14 w-full z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline sticky top-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden">
+<img alt="صورة الملف الشخصي" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzsonz4FlrHUEr6unPOzhgmRfr29RGB_DPA7DPkv7__pNRm1iRsr89KAlS3fVGyngxYLNxzOyEZ1FcvEjzj4uO1BwxJH5G7k2jCu_E9ccGrO-vCK_QYD9Qqnk3V2g73BrDvgHLYyCx2RUW15KIRSCk_XQbchu2Jfq4wvB2469vC7hMzzllCdEgvJ6PIQ_Z_A6ZxJ2iNTKrg5yqfJWvWmygbYxXZ3PPa-QEHAIVKgnYuCWgI0lcath_65xJPdaS10-EPq-zG103HHM"/>
+</div>
+<h1 class="text-title-md font-title-md font-bold text-primary dark:text-primary-fixed-dim">إنتيلي سيلز</h1>
+</div>
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-colors p-2 rounded-full active:opacity-80 active:scale-95 duration-100">
+            search
+        </button>
+</header>
+<main class="max-w-md mx-auto">
+<!-- Date Picker Strip -->
+<section class="bg-surface-container-lowest p-md mt-sm shadow-sm">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-title-md text-title-md">أكتوبر 2023</h2>
+<div class="flex gap-2">
+<button class="material-symbols-outlined text-outline">chevron_right</button>
+<button class="material-symbols-outlined text-outline">chevron_left</button>
+</div>
+</div>
+<div class="flex justify-between overflow-x-auto hide-scrollbar gap-sm">
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl transition-colors hover:bg-surface-container">
+<span class="text-label-sm font-label-sm text-outline">الاثنين</span>
+<span class="text-body-lg font-body-lg mt-1">23</span>
+</div>
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl transition-colors hover:bg-surface-container">
+<span class="text-label-sm font-label-sm text-outline">الثلاثاء</span>
+<span class="text-body-lg font-body-lg mt-1">24</span>
+</div>
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl bg-primary-container text-on-primary shadow-md">
+<span class="text-label-sm font-label-sm opacity-80">الأربعاء</span>
+<span class="text-body-lg font-body-lg font-bold mt-1">25</span>
+</div>
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl transition-colors hover:bg-surface-container">
+<span class="text-label-sm font-label-sm text-outline">الخميس</span>
+<span class="text-body-lg font-body-lg mt-1">26</span>
+</div>
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl transition-colors hover:bg-surface-container">
+<span class="text-label-sm font-label-sm text-outline">الجمعة</span>
+<span class="text-body-lg font-body-lg mt-1">27</span>
+</div>
+<div class="flex flex-col items-center min-w-[44px] p-2 rounded-xl transition-colors hover:bg-surface-container">
+<span class="text-label-sm font-label-sm text-outline">السبت</span>
+<span class="text-body-lg font-body-lg mt-1">28</span>
+</div>
+</div>
+</section>
+<!-- Route Snippet -->
+<section class="mt-md px-container-padding">
+<div class="relative w-full h-40 rounded-xl overflow-hidden shadow-sm border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="واجهة خريطة رقمية نظيفة واحترافية تظهر خط مسار توصيل أزرق يتلوى عبر شبكة حضرية متباينة الألوان. نمط الخريطة مبسط مع لوحة ألوان رمادية فاتحة وبيضاء، وتتميز بعلامات دبابيس زرقاء صغيرة تشير إلى مواقع الزيارة. الإضاءة ساطعة ومنتظمة، مما يعكس جمالية برمجيات المؤسسات عالية الفائدة." data-location="مدينة نيويورك" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzr64Di3_PqXySozGxNwm-6GZuHIkBeXIO0p8HQrla7GkdcP6dRBIqZuWbX7pHCH6-weRebYM_D4JG5w7uc_ZqI-nEn89Sn4QGLFFIMcy20zGZxbjIl5NPXQmmYoMVDyff1PjJ-jAMK-5_-jPVqaLJtJ2NtJBXLIlNhFaBK7eHrH5Kv1SMx0_CAP7ZBtdOaJ_XX5N_EqgtiSmZe741eENAbRTn43p4vhTo0KyS0zvagzIq6gUsx6Y5iXBRtKCc5Bcx8n499C_d6SA"/>
+<div class="absolute bottom-3 right-3 bg-surface-container-lowest px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">directions_car</span>
+<span class="text-label-md font-label-md">12.4 ميل • متبقي 4 محطات</span>
+</div>
+</div>
+</section>
+<!-- Timeline Section -->
+<section class="mt-lg px-container-padding relative timeline-line">
+<div class="flex flex-col gap-lg">
+<!-- Timeline Item: Completed -->
+<div class="relative z-10 flex gap-md">
+<div class="flex-none">
+<div class="w-10 h-10 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary ring-4 ring-background">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<div class="flex-grow bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">09:00 صباحاً</span>
+<h3 class="font-title-md text-title-md mt-0.5">جرين فالي بيسترو</h3>
+</div>
+<span class="bg-tertiary/10 text-tertiary px-2 py-0.5 rounded-full text-label-sm font-label-sm font-bold uppercase">مكتمل</span>
+</div>
+<p class="text-body-md text-on-surface-variant mb-md">فحص مخزون التوريدات الروتيني وتجديد الطلب للربع الرابع.</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-2">
+<img alt="جهة اتصال" class="w-6 h-6 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApE40OJUi09TxCFrnTs76g98H81XPQf5MdeUbi-wOl1F7iDddvvIjrNhbuA9W2G9B_f5RKAJwCob0uXtmffSB31l6FsO8FVydCAHhYXF6V-XzJeE6MDtQbqwtrJBg80XFkUvmjSdcDsSfP4-rjM0PkIWURmSNX6LmbseKb8JfPQg4CIHHDkn-H-sdE6mwGtt653PNhApMPsQwYdahegjEV-oIQ-M_aImLtgk2E38ZsDKXMrMlSzpDe0NwVQrcVV0BvevGlYoVE2P8"/>
+<span class="text-label-sm font-label-sm text-outline mr-4 self-center">مسؤول الاتصال: مارك ر.</span>
+</div>
+<button class="text-primary font-label-md hover:underline flex items-center gap-1">
+                                عرض التقرير <span class="material-symbols-outlined text-sm">arrow_back</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Timeline Item: Active/Current -->
+<div class="relative z-10 flex gap-md">
+<div class="flex-none">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary ring-4 ring-background animate-pulse">
+<span class="material-symbols-outlined">location_on</span>
+</div>
+</div>
+<div class="flex-grow bg-surface-container-lowest p-md rounded-xl shadow-[0_8px_16px_rgba(30,94,255,0.08)] border-2 border-primary-container">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="text-label-sm font-label-sm text-primary font-bold uppercase tracking-wider">11:30 صباحاً (قيد التنفيذ)</span>
+<h3 class="font-title-md text-title-md mt-0.5">صيدلية مستشفى نورث سايد</h3>
+</div>
+<span class="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-label-sm font-label-sm font-bold uppercase">مجدول</span>
+</div>
+<p class="text-body-md text-on-surface-variant mb-md">تدقيق الامتثال الشهري وتسليم العينات الطبية.</p>
+<div class="grid grid-cols-2 gap-sm">
+<button class="bg-primary text-on-primary h-12 rounded-lg font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform" id="checkInBtn" onclick="handleCheckInOut()">
+<span class="material-symbols-outlined" id="checkInIcon">login</span>
+<span id="checkInText">تسجيل الدخول</span>
+</button>
+<button class="border border-outline text-on-surface-variant h-12 rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">directions</span>
+                                الاتجاهات
+                            </button>
+</div>
+</div>
+</div>
+<!-- Timeline Item: Scheduled -->
+<div class="relative z-10 flex gap-md opacity-60">
+<div class="flex-none">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container ring-4 ring-background">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+</div>
+<div class="flex-grow bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">02:15 مساءً</span>
+<h3 class="font-title-md text-title-md mt-0.5">تجمع العافية الحضرية</h3>
+</div>
+<span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded-full text-label-sm font-label-sm font-bold uppercase">مجدول</span>
+</div>
+<p class="text-body-md text-on-surface-variant">تقديم خط إنتاج جديد لمديرة المشتريات سارة لي.</p>
+</div>
+</div>
+<!-- Timeline Item: Missed -->
+<div class="relative z-10 flex gap-md opacity-80">
+<div class="flex-none">
+<div class="w-10 h-10 rounded-full bg-error flex items-center justify-center text-on-error ring-4 ring-background">
+<span class="material-symbols-outlined">error</span>
+</div>
+</div>
+<div class="flex-grow bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="text-label-sm font-label-sm text-error font-bold uppercase tracking-wider">أمس • 04:00 مساءً</span>
+<h3 class="font-title-md text-title-md mt-0.5">مركز رعاية وسط المدينة</h3>
+</div>
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded-full text-label-sm font-label-sm font-bold uppercase">فائتة</span>
+</div>
+<p class="text-body-md text-on-surface-variant mb-md">تأخير مروري غير متوقع. يتطلب إعادة جدولة للأسبوع القادم.</p>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">event_repeat</span> إعادة جدولة الزيارة
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-base py-2 pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-md dark:shadow-none">
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-1" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-sm font-label-sm">الرئيسية</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-1" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-label-sm font-label-sm">العملاء</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold bg-primary-container/10 rounded-xl px-3 py-1 scale-90 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="text-label-sm font-label-sm">النشاط</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-1" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-label-sm font-label-sm">الفواتير</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-container-high transition-all p-1" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="text-label-sm font-label-sm">المزيد</span>
+</a>
+</nav>
+<script>
+        let isCheckedIn = false;
+        function handleCheckInOut() {
+            const btn = document.getElementById('checkInBtn');
+            const icon = document.getElementById('checkInIcon');
+            const text = document.getElementById('checkInText');
+            
+            isCheckedIn = !isCheckedIn;
+            
+            if (isCheckedIn) {
+                btn.classList.replace('bg-primary', 'bg-tertiary');
+                icon.innerText = 'logout';
+                text.innerText = 'تسجيل الخروج';
+                // Trigger a small haptic-like effect
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => btn.style.transform = 'scale(1)', 100);
+            } else {
+                btn.classList.replace('bg-tertiary', 'bg-primary');
+                icon.innerText = 'login';
+                text.innerText = 'تسجيل الدخول';
+            }
+        }
+    </script>
+</body></html>

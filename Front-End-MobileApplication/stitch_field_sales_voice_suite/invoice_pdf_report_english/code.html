@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .pdf-page-shadow { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
+        @media print { .no-print { display: none; } }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#157e4c",
+                        "inverse-primary": "#b6c4ff",
+                        "on-tertiary-fixed-variant": "#00522e",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#dce1ff",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-tertiary-fixed": "#00210f",
+                        "tertiary-fixed-dim": "#7bda9e",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#54637c",
+                        "tertiary": "#006338",
+                        "surface": "#f9f9ff",
+                        "primary": "#0047d3",
+                        "tertiary-fixed": "#97f7b9",
+                        "secondary-container": "#d1e0fe",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#d4e3ff",
+                        "on-surface-variant": "#434656",
+                        "surface-container": "#e6eeff",
+                        "on-background": "#0c1c30",
+                        "on-primary-fixed-variant": "#003ab2",
+                        "inverse-surface": "#223146",
+                        "surface-dim": "#cbdbf7",
+                        "on-tertiary-container": "#c7ffd6",
+                        "primary-container": "#1e5eff",
+                        "background": "#f9f9ff",
+                        "outline": "#737688",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38475f",
+                        "on-primary-container": "#f0f0ff",
+                        "inverse-on-surface": "#ebf1ff",
+                        "on-secondary-fixed": "#0b1c32",
+                        "secondary-fixed-dim": "#b7c7e4",
+                        "on-surface": "#0c1c30",
+                        "outline-variant": "#c3c5d9",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#eff3ff",
+                        "surface-container-high": "#dde9ff",
+                        "surface-tint": "#004ee8",
+                        "surface-container-highest": "#d4e3ff",
+                        "on-primary-fixed": "#001550",
+                        "secondary": "#505f78",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "md": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "container-padding": "16px",
+                        "gutter": "12px",
+                        "lg": "24px"
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "fontWeight": "500"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-dim min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-container-padding h-14 w-full z-40 bg-surface dark:bg-surface-dim docked full-width top-0 border-b border-outline-variant dark:border-outline no-print">
+<div class="flex items-center gap-md">
+<button class="flex items-center justify-center w-10 h-10 hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<span class="text-title-md font-title-md font-bold text-primary dark:text-primary-fixed-dim">Invoice Preview</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="flex items-center justify-center w-10 h-10 hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="flex items-center justify-center w-10 h-10 hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant" onclick="window.print()">
+<span class="material-symbols-outlined">print</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto p-md flex flex-col items-center">
+<!-- Floating Info Bar (Document Status) -->
+<div class="w-full max-w-2xl mb-md flex justify-between items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant no-print">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-tertiary">verified</span>
+<span class="text-label-md font-label-md text-on-surface">Invoice #INV-2023-089</span>
+</div>
+<div class="bg-tertiary-container/10 px-md py-base rounded-full">
+<span class="text-label-sm font-label-sm text-tertiary uppercase">Paid</span>
+</div>
+</div>
+<!-- PDF Document Container -->
+<div class="bg-white w-full max-w-2xl aspect-[1/1.414] pdf-page-shadow rounded-sm flex flex-col p-xl relative overflow-hidden">
+<!-- Document Background Branding Subtle Decor -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+<!-- Invoice Header -->
+<div class="flex justify-between items-start mb-xl relative z-10">
+<div class="flex flex-col gap-base">
+<div class="flex items-center gap-xs">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-size: 20px;">account_balance</span>
+</div>
+<span class="text-headline-lg-mobile font-headline-lg-mobile text-primary font-extrabold tracking-tight">IntelliSales</span>
+</div>
+<p class="text-label-sm font-label-sm text-outline">Industrial Zone, Block 7, Suite 402</p>
+<p class="text-label-sm font-label-sm text-outline">support@intellisales.sy</p>
+</div>
+<div class="text-right">
+<h1 class="text-display-lg font-display-lg text-on-surface uppercase mb-base">Invoice</h1>
+<div class="flex flex-col gap-xs">
+<div class="flex justify-end gap-md">
+<span class="text-label-md font-label-md text-outline uppercase">Number:</span>
+<span class="text-label-md font-label-md text-on-surface">INV-2023-089</span>
+</div>
+<div class="flex justify-end gap-md">
+<span class="text-label-md font-label-md text-outline uppercase">Date:</span>
+<span class="text-label-md font-label-md text-on-surface">Oct 24, 2023</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Customer & Shipping Info -->
+<div class="grid grid-cols-2 gap-lg mb-xl">
+<div class="bg-surface-container-low p-md rounded-lg">
+<span class="text-label-sm font-label-sm text-primary uppercase mb-base block">Bill To</span>
+<h3 class="text-title-md font-title-md text-on-surface mb-xs">Crystal Clear Services Ltd.</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">12 Al-Jalaa St, Damascus</p>
+<p class="text-body-md font-body-md text-on-surface-variant">Contact: Samir Al-Bakri</p>
+<p class="text-body-md font-body-md text-on-surface-variant">+963 11 555 0192</p>
+</div>
+<div class="flex flex-col justify-end p-md">
+<span class="text-label-sm font-label-sm text-outline uppercase mb-base block">Payment Method</span>
+<p class="text-body-md font-body-md text-on-surface">Bank Transfer - Syria International Islamic Bank</p>
+<p class="text-body-md font-body-md text-on-surface-variant">Due Date: Nov 07, 2023</p>
+</div>
+</div>
+<!-- Invoice Table -->
+<div class="flex-1 mb-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b-2 border-primary">
+<th class="py-md px-sm text-label-md font-label-md text-primary uppercase">Description</th>
+<th class="py-md px-sm text-label-md font-label-md text-primary uppercase text-center">Qty</th>
+<th class="py-md px-sm text-label-md font-label-md text-primary uppercase text-right">Unit Price (SYP)</th>
+<th class="py-md px-sm text-label-md font-label-md text-primary uppercase text-right">Total (SYP)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr>
+<td class="py-md px-sm">
+<span class="text-body-md font-body-md text-on-surface font-semibold block">Dish Soap 10L</span>
+<span class="text-label-sm font-label-sm text-outline">Industrial strength degreaser</span>
+</td>
+<td class="py-md px-sm text-center text-body-md font-body-md text-on-surface">15</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface">45,000</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface font-semibold">675,000</td>
+</tr>
+<tr>
+<td class="py-md px-sm">
+<span class="text-body-md font-body-md text-on-surface font-semibold block">Floor Cleaner (Lemon)</span>
+<span class="text-label-sm font-label-sm text-outline">Concentrated shine formula, 5L</span>
+</td>
+<td class="py-md px-sm text-center text-body-md font-body-md text-on-surface">20</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface">32,500</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface font-semibold">650,000</td>
+</tr>
+<tr>
+<td class="py-md px-sm">
+<span class="text-body-md font-body-md text-on-surface font-semibold block">Microfiber Towels (Bulk Pack)</span>
+<span class="text-label-sm font-label-sm text-outline">Pack of 50, Lint-free</span>
+</td>
+<td class="py-md px-sm text-center text-body-md font-body-md text-on-surface">5</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface">85,000</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface font-semibold">425,000</td>
+</tr>
+<tr>
+<td class="py-md px-sm">
+<span class="text-body-md font-body-md text-on-surface font-semibold block">Glass Cleaner Spray</span>
+<span class="text-label-sm font-label-sm text-outline">Streak-free 750ml</span>
+</td>
+<td class="py-md px-sm text-center text-body-md font-body-md text-on-surface">30</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface">12,000</td>
+<td class="py-md px-sm text-right text-body-md font-body-md text-on-surface font-semibold">360,000</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Footer Totals & Signature -->
+<div class="mt-auto">
+<div class="flex justify-end mb-xl">
+<div class="w-64 space-y-sm">
+<div class="flex justify-between">
+<span class="text-label-md font-label-md text-outline uppercase">Subtotal</span>
+<span class="text-body-md font-body-md text-on-surface">2,110,000 SYP</span>
+</div>
+<div class="flex justify-between">
+<span class="text-label-md font-label-md text-outline uppercase">Tax (0%)</span>
+<span class="text-body-md font-body-md text-on-surface">0 SYP</span>
+</div>
+<div class="flex justify-between items-center py-sm border-t border-primary">
+<span class="text-title-md font-title-md text-primary uppercase">Total Amount</span>
+<span class="text-headline-lg-mobile font-headline-lg-mobile text-primary font-bold">2,110,000 SYP</span>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div class="text-label-sm font-label-sm text-outline-variant italic">
+                        Thank you for your business!
+                    </div>
+<div class="text-center">
+<div class="mb-sm">
+<img alt="Signature" class="h-12 mix-blend-multiply opacity-80" data-alt="A realistic wet-ink handwritten signature on a white background, suggesting professional authentication. The signature is elegant and flowing, captured with a high-contrast corporate aesthetic. It sits within a clean, minimalist layout typical of enterprise-grade financial documents. The lighting is bright and even, mimicking a professional scanner output." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVeIElCDEfeLoYoHltzMDoYQER9fxzZflviUd_5OUQyLdLGYNwg7Vy5krVgLSV18PSHDCRY2FvRXQW1BwpBL6aUQfCsBoID0MCoIrm3TYIRizAZpOVJbYaHWdSysJr4qEY0E0UJJg5uSNXL0GKW3bC6zQ1E5JMeKWVWFaJjXf_mRR9da3N5UESL4ketICrioyF5Q6d90JuXwjt4brndHHPStrbjvrZBuQWvG2TmZ2EDSIp4Hs6heliHOQ3Cml9OVxXk5a_vTmD4Ds"/>
+</div>
+<div class="w-48 border-t border-on-surface"></div>
+<span class="text-label-sm font-label-sm text-on-surface mt-xs block font-bold">Authorized Signature</span>
+</div>
+</div>
+</div>
+<!-- Document Watermark/Page Number -->
+<div class="absolute bottom-md left-xl">
+<span class="text-label-sm font-label-sm text-outline-variant">Page 1 of 1 | Generated by IntelliSales PDF Engine</span>
+</div>
+</div>
+<!-- Spacer for mobile scroll -->
+<div class="h-24 md:hidden"></div>
+</main>
+<!-- BottomNavBar (Suppressed for focused document task, but added placeholder if user wants to return) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-base py-2 pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline no-print">
+<div class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container transition-all px-3 py-1 rounded-xl">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-sm font-label-sm">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-bold bg-primary-container/10 rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="text-label-sm font-label-sm">Invoices</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container transition-all px-3 py-1 rounded-xl">
+<span class="material-symbols-outlined">group</span>
+<span class="text-label-sm font-label-sm">Customers</span>
+</div>
+<div class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container transition-all px-3 py-1 rounded-xl">
+<span class="material-symbols-outlined">menu</span>
+<span class="text-label-sm font-label-sm">More</span>
+</div>
+</nav>
+<!-- Success Feedback Overlay (Micro-interaction example) -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-lg py-md rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-[70] flex items-center gap-sm" id="downloadToast">
+<span class="material-symbols-outlined text-tertiary-fixed">check_circle</span>
+<span class="text-body-md font-body-md">Invoice ready for export</span>
+</div>
+<script>
+        // Micro-interaction for share/download
+        const shareBtn = document.querySelector('button .material-symbols-outlined:contains("share")');
+        // Simple manual check for text content since :contains isn't native JS
+        document.querySelectorAll('button').forEach(btn => {
+            if(btn.innerHTML.includes('share') || btn.innerHTML.includes('print')) {
+                btn.addEventListener('click', () => {
+                    const toast = document.getElementById('downloadToast');
+                    toast.classList.remove('opacity-0');
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0');
+                    }, 2000);
+                });
+            }
+        });
+    </script>
+</body></html>
