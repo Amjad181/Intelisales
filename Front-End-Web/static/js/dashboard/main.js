@@ -1,21 +1,29 @@
 import { renderSidebar } from "./components/sidebar.js";
 import { renderTopbar } from "./components/topbar.js";
-import { buildModalMarkup, handleEntityFormSubmit, buildInvoiceItemsModalMarkup } from "./components/entityModal.js";
-import { appState, setActiveRoute } from "./state/appState.js";
+import { buildModalMarkup, handleEntityFormSubmit } from "./components/entityModal.js";
+import { renderLoadingState, renderErrorState, renderModalLoadingOverlay, renderModalErrorOverlay } from "./components/asyncState.js";
+import { appState, setActiveRoute, getListPage, setListPage } from "./state/appState.js";
 import {
-  dataStore,
-  removeCustomer,
-  removeInventoryAlert,
-  removePriceList,
-  removePriceListItem,
   removeSale,
   removeTopRep,
-  removeUser,
-  removeInvoice,
   removeRegion,
-  removeVisitSchedule,
-  removeDailyVisit,
 } from "./state/dataStore.js";
+import { getCustomer, deleteCustomer, listCustomers } from "../api/services/customersService.js";
+import { getProduct, deleteProduct, updateProduct, listProducts } from "../api/services/productsService.js";
+import { getPriceList, deletePriceList, updatePriceList, removePriceListItem } from "../api/services/priceListsService.js";
+import { getUser, deleteUser } from "../api/services/usersService.js";
+import {
+  getInvoice,
+  archiveInvoice,
+  confirmInvoice,
+  markInvoiceSent,
+  getInvoicePdfBlob,
+} from "../api/services/invoicesService.js";
+import {
+  getVisit,
+  confirmVisit,
+  cancelVisit,
+} from "../api/services/visitsService.js";
 import { renderOverviewPage } from "./pages/overviewPage.js";
 import { renderSalesPage } from "./pages/salesPage.js";
 import { renderCustomersPage } from "./pages/customersPage.js";
@@ -29,7 +37,10 @@ import { renderPricelistDetailPage } from "./pages/pricelistDetailPage.js";
 import { renderRegionsPage } from "./pages/regionsPage.js";
 import { renderVisitsPage } from "./pages/visitsPage.js";
 import { renderVisitDetailPage } from "./pages/visitDetailPage.js";
+import { renderRecommendationsPage, renderRecommendationResults } from "./pages/recommendationsPage.js";
+import { getCustomerRecommendations } from "../api/services/recommendationsService.js";
 import { t, setLocale, initI18n } from "../i18n/i18n.js";
+import { isAuthenticated, logout, refreshCurrentUser } from "../api/authService.js";
 
 initI18n();
 
@@ -47,6 +58,7 @@ const routes = [
   { key: "visit", render: renderVisitDetailPage },
   { key: "reports", render: renderReportsPage },
   { key: "users", render: renderUsersPage },
+  { key: "recommendations", render: renderRecommendationsPage },
 ];
 
 const TABLE_BODY_IDS = {
@@ -58,7 +70,6 @@ const TABLE_BODY_IDS = {
   priceLists: "priceListsTableBody",
   regions: "regionsTableBody",
   visits: "visitsTableBody",
-  dailyVisits: "dailyVisitsTableBody",
 };
 
 const USER_ROLE_STORAGE_KEY = "intellisalesUserRole";
@@ -77,6 +88,7 @@ const ROLE_PERMISSIONS = {
     "visit",
     "reports",
     "users",
+    "recommendations",
   ],
   salesManager: [
     "overview",
@@ -91,6 +103,7 @@ const ROLE_PERMISSIONS = {
     "visits",
     "visit",
     "reports",
+    "recommendations",
   ],
   salesSupervisor: [
     "overview",
@@ -102,6 +115,7 @@ const ROLE_PERMISSIONS = {
     "visits",
     "visit",
     "reports",
+    "recommendations",
   ],
   salesRep: [
     "overview",
@@ -111,6 +125,7 @@ const ROLE_PERMISSIONS = {
     "invoice",
     "visits",
     "visit",
+    "recommendations",
   ],
   accountant: [
     "overview",
@@ -155,67 +170,141 @@ function closeSidebar() {
   }
 }
 
-function openEntityModal(entity, mode, id, options = {}) {
+const ASYNC_MODAL_GETTERS = {
+  customer: getCustomer,
+  inventory: getProduct,
+  priceList: getPriceList,
+  user: getUser,
+};
+
+async function openEntityModal(entity, mode, id, options = {}) {
   if (!modalMount) return;
+
+  if (entity === "priceItem") {
+    modalMount.innerHTML = renderModalLoadingOverlay();
+    try {
+      const priceListId = options.priceListId;
+      const [priceList, productsRes] = await Promise.all([
+        getPriceList(priceListId),
+        listProducts({ limit: 100 }),
+      ]);
+      const productOptions = (productsRes.items || []).map((p) => ({ value: p.id || p._id, label: p.name }));
+      let record = { priceListId };
+      if (mode === "edit" && options.itemIndex !== undefined) {
+        const item = (priceList.items || [])[options.itemIndex] || {};
+        record = { ...item, priceListId, itemIndex: options.itemIndex };
+      }
+      modalMount.innerHTML = buildModalMarkup("priceItem", mode, "", record, { productOptions });
+    } catch (err) {
+      modalMount.innerHTML = renderModalErrorOverlay(err);
+    }
+    return;
+  }
+
+  if (entity === "invoice") {
+    modalMount.innerHTML = renderModalLoadingOverlay();
+    try {
+      const [invoice, customersRes, productsRes] = await Promise.all([
+        mode === "edit" && id ? getInvoice(id) : Promise.resolve(null),
+        listCustomers({ limit: 100 }),
+        listProducts({ limit: 100 }),
+      ]);
+      const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
+      const productOptions = (productsRes.items || []).map((p) => ({ value: p.id || p._id, label: p.name }));
+      modalMount.innerHTML = buildModalMarkup("invoice", mode, id || "", invoice || {}, { customerOptions, productOptions });
+    } catch (err) {
+      modalMount.innerHTML = renderModalErrorOverlay(err);
+    }
+    return;
+  }
+
+  if (entity === "visit") {
+    modalMount.innerHTML = renderModalLoadingOverlay();
+    try {
+      const [visit, customersRes] = await Promise.all([
+        mode === "edit" && id ? getVisit(id) : Promise.resolve(null),
+        listCustomers({ limit: 100 }),
+      ]);
+      const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
+      modalMount.innerHTML = buildModalMarkup("visit", mode, id || "", visit || {}, { customerOptions });
+    } catch (err) {
+      modalMount.innerHTML = renderModalErrorOverlay(err);
+    }
+    return;
+  }
+
+  if (entity === "visitComplete") {
+    modalMount.innerHTML = buildModalMarkup("visitComplete", mode, id || "", {});
+    return;
+  }
+
+  const asyncGetter = ASYNC_MODAL_GETTERS[entity];
+  if (asyncGetter) {
+    modalMount.innerHTML = renderModalLoadingOverlay();
+    try {
+      const record = mode === "edit" && id ? await asyncGetter(id) : options;
+      modalMount.innerHTML = buildModalMarkup(entity, mode, id || "", record || {});
+    } catch (err) {
+      modalMount.innerHTML = renderModalErrorOverlay(err);
+    }
+    return;
+  }
+
   modalMount.innerHTML = buildModalMarkup(entity, mode, id || "", options);
 }
 
-function openInvoiceItemsModal(invoiceId) {
-  if (!modalMount) return;
-  modalMount.innerHTML = buildInvoiceItemsModalMarkup(invoiceId);
-}
-
-function deleteEntity(entity, id) {
+async function deleteEntity(entity, id) {
   const message = entity === "priceList" ? t("confirm.deletePricelist") : t("confirm.deleteRecord");
   if (!window.confirm(message)) {
     return;
   }
-  if (entity === "user") removeUser(id);
-  else if (entity === "customer") removeCustomer(id);
-  else if (entity === "sale") removeSale(id);
-  else if (entity === "invoice") removeInvoice(id);
-  else if (entity === "inventory") removeInventoryAlert(id);
-  else if (entity === "topRep") removeTopRep(id);
-  else if (entity === "priceList") removePriceList(id);
-  else if (entity === "priceItem") removePriceListItem(id);
-  else if (entity === "region") removeRegion(id);
-  else if (entity === "visit") removeVisitSchedule(id);
-  else if (entity === "dailyVisit") removeDailyVisit(id);
-  renderApp();
+  try {
+    if (entity === "user") await deleteUser(id);
+    else if (entity === "customer") await deleteCustomer(id);
+    else if (entity === "sale") removeSale(id);
+    else if (entity === "inventory") await deleteProduct(id);
+    else if (entity === "topRep") removeTopRep(id);
+    else if (entity === "priceList") await deletePriceList(id);
+    else if (entity === "region") removeRegion(id);
+    renderApp();
+  } catch (err) {
+    window.alert(err?.message || t("common.loadError"));
+  }
 }
 
-function archiveEntity(entity, id) {
+async function archiveEntity(entity, id) {
   if (entity === "invoice") {
     const message = t("confirm.archiveRecord") || "Archive this invoice? It will be moved to archived status.";
     if (!window.confirm(message)) {
       return;
     }
-    // For demo purposes, we'll just update the status to "Archived"
-    const invoice = dataStore.invoices.find(inv => inv.id === id);
-    if (invoice) {
-      invoice.status = "Archived";
+    try {
+      await archiveInvoice(id);
       renderApp();
+    } catch (err) {
+      window.alert(err?.message || t("common.loadError"));
     }
   } else if (entity === "inventory") {
     const message = t("confirm.archiveRecord") || "Archive this product? It will be moved to archived status.";
     if (!window.confirm(message)) {
       return;
     }
-    // For demo purposes, we'll just update the status to "Archived"
-    const product = dataStore.inventoryAlerts.find(inv => inv.id === id);
-    if (product) {
-      product.status = "Archived";
+    try {
+      await updateProduct(id, { status: "Archived" });
       renderApp();
+    } catch (err) {
+      window.alert(err?.message || t("common.loadError"));
     }
   } else if (entity === "priceList") {
     const message = t("confirm.archivePricelist") || "Archive this pricelist? It will be moved to archived status.";
     if (!window.confirm(message)) {
       return;
     }
-    const pricelist = dataStore.priceLists.find((pl) => pl.id === id);
-    if (pricelist) {
-      pricelist.status = "Archived";
+    try {
+      await updatePriceList(id, { status: "Archived" });
       renderApp();
+    } catch (err) {
+      window.alert(err?.message || t("common.loadError"));
     }
   }
 }
@@ -232,12 +321,30 @@ function filterTable(tableKey, query) {
 }
 
 function getCurrentUserRole() {
+  if (!isAuthenticated()) {
+    window.location.href = "./index.html";
+    return null;
+  }
   const storedRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
   if (!storedRole || !ROLE_PERMISSIONS[storedRole]) {
     window.location.href = "./index.html";
     return null;
   }
   return storedRole;
+}
+
+async function renderRoute(routeDef) {
+  const result = routeDef.render();
+  if (!(result instanceof Promise)) {
+    pageMount.innerHTML = result;
+    return;
+  }
+  pageMount.innerHTML = renderLoadingState();
+  try {
+    pageMount.innerHTML = await result;
+  } catch (err) {
+    pageMount.innerHTML = renderErrorState(err, "retry-route");
+  }
 }
 
 function renderApp() {
@@ -258,7 +365,7 @@ function renderApp() {
 
   sidebarMount.innerHTML = renderSidebar(sidebarRoutes, appState.activeRoute);
   topbarMount.innerHTML = renderTopbar(t(`titles.${currentRoute.key}`), t(`roles.${appState.userRoleKey}`));
-  pageMount.innerHTML = currentRoute.render();
+  renderRoute(currentRoute);
 }
 
 document.addEventListener("click", (event) => {
@@ -278,7 +385,9 @@ document.addEventListener("click", (event) => {
 
   if (target.closest('[data-action="logout"]')) {
     localStorage.removeItem(USER_ROLE_STORAGE_KEY);
-    window.location.href = "./index.html";
+    logout().finally(() => {
+      window.location.href = "./index.html";
+    });
     return;
   }
 
@@ -327,15 +436,68 @@ document.addEventListener("click", (event) => {
     if (entity === "priceItem") {
       const priceListId = actionEl.dataset.priceListId;
       if (priceListId) options.priceListId = priceListId;
+      if (actionEl.dataset.itemIndex !== undefined) options.itemIndex = Number(actionEl.dataset.itemIndex);
     }
     if (entity) openEntityModal(entity, mode, id, options);
     return;
   }
 
-  if (action === "view-invoice-items") {
+  if (action === "confirm-invoice") {
     event.preventDefault();
-    const invoiceId = actionEl.dataset.invoiceId;
-    if (invoiceId) openInvoiceItemsModal(invoiceId);
+    const invoiceId = actionEl.dataset.id;
+    if (invoiceId && window.confirm(t("confirm.confirmInvoice"))) {
+      confirmInvoice(invoiceId)
+        .then(() => renderApp())
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
+    return;
+  }
+
+  if (action === "mark-sent-invoice") {
+    event.preventDefault();
+    const invoiceId = actionEl.dataset.id;
+    if (invoiceId && window.confirm(t("confirm.markSentInvoice"))) {
+      markInvoiceSent(invoiceId)
+        .then(() => renderApp())
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
+    return;
+  }
+
+  if (action === "open-invoice-pdf") {
+    event.preventDefault();
+    const invoiceId = actionEl.dataset.id;
+    if (invoiceId) {
+      getInvoicePdfBlob(invoiceId)
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        })
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
+    return;
+  }
+
+  if (action === "confirm-visit") {
+    event.preventDefault();
+    const visitId = actionEl.dataset.id;
+    if (visitId && window.confirm(t("confirm.confirmVisit"))) {
+      confirmVisit(visitId)
+        .then(() => renderApp())
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
+    return;
+  }
+
+  if (action === "cancel-visit") {
+    event.preventDefault();
+    const visitId = actionEl.dataset.id;
+    if (visitId && window.confirm(t("confirm.cancelVisit"))) {
+      cancelVisit(visitId)
+        .then(() => renderApp())
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
     return;
   }
 
@@ -355,6 +517,51 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  if (action === "retry-route") {
+    event.preventDefault();
+    renderApp();
+    return;
+  }
+
+  if (action === "page-prev" || action === "page-next") {
+    event.preventDefault();
+    const entityKey = actionEl.dataset.entityKey;
+    if (entityKey) {
+      setListPage(entityKey, getListPage(entityKey) + (action === "page-prev" ? -1 : 1));
+      renderApp();
+    }
+    return;
+  }
+
+  if (action === "load-recommendations") {
+    event.preventDefault();
+    const select = document.getElementById("recommendationsCustomerSelect");
+    const resultsEl = document.getElementById("recommendationsResults");
+    const customerId = select?.value;
+    if (!customerId || !resultsEl) return;
+    resultsEl.innerHTML = renderLoadingState();
+    getCustomerRecommendations(customerId, { limit: 5, includeHistory: true })
+      .then((data) => {
+        resultsEl.innerHTML = renderRecommendationResults(data);
+      })
+      .catch((err) => {
+        resultsEl.innerHTML = renderErrorState(err);
+      });
+    return;
+  }
+
+  if (action === "delete-price-item") {
+    event.preventDefault();
+    const priceListId = actionEl.dataset.priceListId;
+    const itemIndex = actionEl.dataset.itemIndex;
+    if (priceListId && itemIndex !== undefined && window.confirm(t("confirm.deleteRecord"))) {
+      removePriceListItem(priceListId, Number(itemIndex))
+        .then(() => renderApp())
+        .catch((err) => window.alert(err?.message || t("common.loadError")));
+    }
+    return;
+  }
+
   if (action === "nav-route") {
     event.preventDefault();
     const route = actionEl.dataset.route || "overview";
@@ -367,9 +574,25 @@ document.addEventListener("submit", (event) => {
   if (!(form instanceof HTMLFormElement)) return;
   if (form.id !== "dashboardEntityForm") return;
   event.preventDefault();
-  handleEntityFormSubmit(form);
-  closeModal();
-  renderApp();
+
+  const submitBtn = form.closest(".modal-card")?.querySelector('button[type="submit"]');
+  const originalLabel = submitBtn?.textContent;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = t("common.saving");
+  }
+
+  Promise.resolve(handleEntityFormSubmit(form)).then((result) => {
+    if (result === false) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+      }
+      return;
+    }
+    closeModal();
+    renderApp();
+  });
 });
 
 window.addEventListener("hashchange", () => {
@@ -386,3 +609,7 @@ document.addEventListener("input", (event) => {
 });
 
 renderApp();
+
+if (isAuthenticated()) {
+  refreshCurrentUser().catch(() => {});
+}

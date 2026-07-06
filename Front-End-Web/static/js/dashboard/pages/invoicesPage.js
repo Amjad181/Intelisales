@@ -1,30 +1,34 @@
-import { dataStore, getCustomerName, getUserName } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
+import { renderPager } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { labelInvoiceStatus } from "../../i18n/labels.js";
+import { getListPage } from "../state/appState.js";
+import { listInvoices } from "../../api/services/invoicesService.js";
 
-export function renderInvoicesPage() {
-  const rows = dataStore.invoices
-    .map(
-      (row) => `
+export async function renderInvoicesPage() {
+  const page = getListPage("invoices");
+  const { items, pagination } = await listInvoices({ page, limit: 20 });
+
+  const rows = items
+    .map((row) => {
+      const id = row.id || row._id;
+      return `
         <tr>
           <td class="td-muted">
-            <button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="invoice/${escapeHtml(row.id)}">
-              ${escapeHtml(row.Invoice_number)}
+            <button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="invoice/${escapeHtml(id)}">
+              ${escapeHtml(row.invoiceNumber)}
             </button>
           </td>
-          <td class="td-strong">${escapeHtml(getCustomerName(row.customer_id))}</td>
-          <td>${escapeHtml(getUserName(row.created_by))}</td>
-          <td>${escapeHtml(row.Invoice_date ? new Date(row.Invoice_date).toLocaleDateString() : "—")}</td>
-          <td>${escapeHtml(row.total_Amount)}</td>
-          <td>${escapeHtml(row.paid_Amount)}</td>
-          <td>${escapeHtml(row.remaining_Amount)}</td>
-          <td><span class="badge badge--${row.status === 'Paid' ? 'ok' : row.status === 'Pending' ? 'warning' : row.status === 'Overdue' ? 'danger' : row.status === 'Archived' ? 'secondary' : 'danger'}">${escapeHtml(labelInvoiceStatus(row.status))}</span></td>
-          <td class="td-actions">${renderRowActions("invoice", row.id)}</td>
+          <td class="td-strong">${escapeHtml(row.customerSnapshot?.name || row.customerId || "—")}</td>
+          <td>${escapeHtml(row.invoiceStatus)}</td>
+          <td>${escapeHtml(row.paymentStatus)}</td>
+          <td>${escapeHtml(row.totalAmount)} ${escapeHtml(row.currency || "")}</td>
+          <td>${escapeHtml(row.paidAmount)}</td>
+          <td>${escapeHtml(row.remainingAmount)}</td>
+          <td class="td-actions">${renderRowActions("invoice", id)}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
 
   return `
@@ -40,19 +44,19 @@ export function renderInvoicesPage() {
               <tr>
                 <th>${escapeHtml(t("invoices.thInvoiceNumber"))}</th>
                 <th>${escapeHtml(t("invoices.thCustomer"))}</th>
-                <th>${escapeHtml(t("invoices.thCreatedBy"))}</th>
-                <th>${escapeHtml(t("invoices.thDate"))}</th>
+                <th>${escapeHtml(t("invoices.thStatus"))}</th>
+                <th>${escapeHtml(t("invoices.thPaymentStatus"))}</th>
                 <th>${escapeHtml(t("invoices.thTotalAmount"))}</th>
                 <th>${escapeHtml(t("invoices.thPaidAmount"))}</th>
                 <th>${escapeHtml(t("invoices.thRemainingAmount"))}</th>
-                <th>${escapeHtml(t("invoices.thStatus"))}</th>
                 <th class="th-actions">${escapeHtml(t("common.actions"))}</th>
               </tr>
             </thead>
-            <tbody id="invoicesTableBody">${rows}</tbody>
+            <tbody id="invoicesTableBody">${rows || `<tr><td colspan="8" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`}</tbody>
           </table>
         </div>
       </div>
+      ${renderPager(pagination, "invoices")}
     </section>
   `;
 }

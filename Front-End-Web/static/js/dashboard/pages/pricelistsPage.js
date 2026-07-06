@@ -1,19 +1,24 @@
-import { dataStore } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
+import { renderPager } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
+import { getListPage } from "../state/appState.js";
+import { listPriceLists } from "../../api/services/priceListsService.js";
 
-export function renderPricelistsPage() {
-  const listsRows = dataStore.priceLists
+export async function renderPricelistsPage() {
+  const page = getListPage("priceLists");
+  const { items, pagination } = await listPriceLists({ page, limit: 20 });
+
+  const listsRows = items
     .map((pl) => {
-      const count = dataStore.priceListItems.filter((i) => i.priceListId === pl.id).length;
+      const id = pl.id || pl._id;
       return `
         <tr>
-          <td class="td-strong"><button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="pricelist/${escapeHtml(pl.id)}">${escapeHtml(pl.name)}</button></td>
-          <td>${escapeHtml(pl.desc)}</td>
+          <td class="td-strong"><button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="pricelist/${escapeHtml(id)}">${escapeHtml(pl.name)}</button></td>
+          <td>${escapeHtml(pl.description)}</td>
           <td><span class="badge badge--neutral">${escapeHtml(pl.status)}</span></td>
-          <td class="td-muted">${count}</td>
-          <td class="td-actions">${renderRowActions("priceList", pl.id)}</td>
+          <td class="td-muted">${(pl.items || []).length}</td>
+          <td class="td-actions">${renderRowActions("priceList", id)}</td>
         </tr>
       `;
     })
@@ -43,10 +48,11 @@ export function renderPricelistsPage() {
                 <th class="th-actions">${escapeHtml(t("common.actions"))}</th>
               </tr>
             </thead>
-            <tbody id="priceListsTableBody">${listsRows}</tbody>
+            <tbody id="priceListsTableBody">${listsRows || `<tr><td colspan="5" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`}</tbody>
           </table>
         </div>
       </div>
+      ${renderPager(pagination, "priceLists")}
     </section>
   `;
 }

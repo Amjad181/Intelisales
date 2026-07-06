@@ -1,12 +1,31 @@
-import { dataStore, getCustomerName, getUserName, getInvoiceItems } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
-import { labelInvoiceStatus } from "../../i18n/labels.js";
+import { renderErrorState } from "../components/asyncState.js";
+import { getInvoice } from "../../api/services/invoicesService.js";
 
-export function renderInvoiceDetailPage() {
+export async function renderInvoiceDetailPage() {
   const hash = window.location.hash.replace("#", "").trim();
   const invoiceId = hash.split("/")[1] || "";
-  const invoice = dataStore.invoices.find((inv) => inv.id === invoiceId);
+
+  if (!invoiceId) {
+    return `
+      <section class="panel panel--flush">
+        <div class="toolbar">
+          <button class="secondary-btn" type="button" data-action="nav-route" data-route="invoices">${escapeHtml(t("common.list"))}</button>
+        </div>
+        <div class="panel-body">
+          <p>${escapeHtml(t("common.notFound"))}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  let invoice;
+  try {
+    invoice = await getInvoice(invoiceId);
+  } catch (err) {
+    return renderErrorState(err, "retry-route");
+  }
 
   if (!invoice) {
     return `
@@ -21,25 +40,30 @@ export function renderInvoiceDetailPage() {
     `;
   }
 
-  const items = getInvoiceItems(invoiceId);
+  const items = invoice.items || [];
   const itemRows = items.length > 0
     ? items.map((item) => `
         <tr>
-          <td>${escapeHtml(item.item_id)}</td>
-          <td>${escapeHtml(item.product_id)}</td>
+          <td>${escapeHtml(item.productSnapshot?.name || item.productId || "—")}</td>
           <td>${escapeHtml(item.quantity)}</td>
-          <td>${escapeHtml(item.unit_id || "—")}</td>
-          <td>${escapeHtml(item.unit_price)}</td>
-          <td>${escapeHtml(item.total_price)}</td>
+          <td>${escapeHtml(item.unitPrice ?? "—")}</td>
+          <td>${escapeHtml(item.totalPrice ?? "—")}</td>
         </tr>
       `).join("")
-    : `<tr><td colspan="6" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`;
+    : `<tr><td colspan="4" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`;
 
   return `
     <section class="panel panel--flush">
-      <div class="toolbar">
+      <div class="toolbar toolbar--split">
         <button class="secondary-btn" type="button" data-action="nav-route" data-route="invoices">${escapeHtml(t("common.list"))}</button>
-        <button class="primary-btn" type="button" data-action="open-entity-form" data-entity="invoice" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("common.edit"))}</button>
+        <div class="actions">
+          <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="invoice" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("common.edit"))}</button>
+          <button class="secondary-btn" type="button" data-action="confirm-invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.confirm"))}</button>
+          <button class="secondary-btn" type="button" data-action="mark-sent-invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.markSent"))}</button>
+          <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="payment" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.recordPayment"))}</button>
+          <button class="secondary-btn" type="button" data-action="open-invoice-pdf" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.openPdf"))}</button>
+          <button class="btn-text btn-text--warning" type="button" data-action="archive-entity" data-entity="invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("common.archive"))}</button>
+        </div>
       </div>
 
       <div class="table-shell">
@@ -47,44 +71,52 @@ export function renderInvoiceDetailPage() {
           <table class="data-table">
             <tbody>
               <tr>
-                <th>${escapeHtml(t("form.invoice.invoiceNumber"))}</th>
-                <td><div class="modal-field"><input id="fld-Invoice_number" name="Invoice_number" type="text" value="${escapeHtml(invoice.Invoice_number)}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thInvoiceNumber"))}</th>
+                <td>${escapeHtml(invoice.invoiceNumber)}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.customerId"))}</th>
-                <td><div class="modal-field"><input id="fld-customer_id" name="customer_id" type="text" value="${escapeHtml(invoice.customer_id)}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thCustomer"))}</th>
+                <td>${escapeHtml(invoice.customerSnapshot?.name || invoice.customerId || "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.createdBy"))}</th>
-                <td><div class="modal-field"><input id="fld-created_by" name="created_by" type="text" value="${escapeHtml(getUserName(invoice.created_by))}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thStatus"))}</th>
+                <td>${escapeHtml(invoice.invoiceStatus)}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.invoiceDate"))}</th>
-                <td><div class="modal-field"><input id="fld-Invoice_date" name="Invoice_date" type="text" value="${escapeHtml(invoice.Invoice_date ? new Date(invoice.Invoice_date).toLocaleDateString() : "")}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thPaymentStatus"))}</th>
+                <td>${escapeHtml(invoice.paymentStatus)}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.totalAmount"))}</th>
-                <td><div class="modal-field"><input id="fld-total_Amount" name="total_Amount" type="text" value="${escapeHtml(invoice.total_Amount)}" readonly /></div></td>
+                <th>${escapeHtml(t("form.invoice.dueDate"))}</th>
+                <td>${escapeHtml(invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.paidAmount"))}</th>
-                <td><div class="modal-field"><input id="fld-paid_Amount" name="paid_Amount" type="text" value="${escapeHtml(invoice.paid_Amount)}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thSubtotal"))}</th>
+                <td>${escapeHtml(invoice.subtotal ?? "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.remainingAmount"))}</th>
-                <td><div class="modal-field"><input id="fld-remaining_Amount" name="remaining_Amount" type="text" value="${escapeHtml(invoice.remaining_Amount)}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thDiscountAmount"))}</th>
+                <td>${escapeHtml(invoice.discountAmount ?? "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.status"))}</th>
-                <td><div class="modal-field"><input id="fld-status" name="status" type="text" value="${escapeHtml(labelInvoiceStatus(invoice.status))}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thTaxAmount"))}</th>
+                <td>${escapeHtml(invoice.taxAmount ?? "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.invoice.creationMethod"))}</th>
-                <td><div class="modal-field"><input id="fld-creation_method" name="creation_method" type="text" value="${escapeHtml(invoice.creation_method)}" readonly /></div></td>
+                <th>${escapeHtml(t("invoices.thTotalAmount"))}</th>
+                <td>${escapeHtml(invoice.totalAmount)} ${escapeHtml(invoice.currency || "")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("invoices.thPaidAmount"))}</th>
+                <td>${escapeHtml(invoice.paidAmount)}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("invoices.thRemainingAmount"))}</th>
+                <td>${escapeHtml(invoice.remainingAmount)}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("form.invoice.notes"))}</th>
-                <td><div class="modal-field"><input id="fld-notes" name="notes" type="text" value="${escapeHtml(invoice.notes)}" readonly /></div></td>
+                <td>${escapeHtml(invoice.notes || "—")}</td>
               </tr>
             </tbody>
           </table>
@@ -100,10 +132,8 @@ export function renderInvoiceDetailPage() {
           <table class="data-table">
             <thead>
               <tr>
-                <th>${escapeHtml(t("invoices.thItemId"))}</th>
                 <th>${escapeHtml(t("invoices.thProjectId"))}</th>
                 <th>${escapeHtml(t("invoices.thQuantity"))}</th>
-                <th>${escapeHtml(t("invoices.thUnit"))}</th>
                 <th>${escapeHtml(t("invoices.thUnitPrice"))}</th>
                 <th>${escapeHtml(t("invoices.thTotalPrice"))}</th>
               </tr>

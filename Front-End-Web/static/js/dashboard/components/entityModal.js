@@ -1,49 +1,46 @@
 import {
   dataStore,
-  nextInvoiceNumber,
-  priceListSelectOptions,
-  upsertCustomer,
-  upsertInventoryAlert,
-  upsertPriceList,
-  upsertPriceListItem,
+  nextSaleInvoiceNumber,
   upsertSale,
   upsertTopRep,
-  upsertUser,
   upsertRegion,
-  upsertVisitSchedule,
-  upsertDailyVisit,
-  upsertInvoice,
-  regionSelectOptions,
   userSelectOptions,
-  getInvoiceItems,
 } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
+import { BACKEND_ROLE_OPTIONS } from "../../api/roleMap.js";
+import { createCustomer, updateCustomer } from "../../api/services/customersService.js";
+import { createProduct, updateProduct } from "../../api/services/productsService.js";
+import { createPriceList, updatePriceList, addPriceListItem, updatePriceListItem } from "../../api/services/priceListsService.js";
+import { createUser, updateUser, updateUserPassword } from "../../api/services/usersService.js";
+import { createInvoice, updateInvoice, recordInvoicePayment } from "../../api/services/invoicesService.js";
+import { createVisit, updateVisit, completeVisit } from "../../api/services/visitsService.js";
 
 function getRecord(entity, id) {
+  // user keeps its mock array around for cross-reference lookups used by not-yet-migrated
+  // pages (see INTEGRATION_NOTES.md), but real backend ids won't match any mock record here
+  // — that's expected, the real fetched record is passed as initialData.
   const map = {
     user: dataStore.users,
-    customer: dataStore.customers,
     sale: dataStore.sales,
-    invoice: dataStore.invoices,
-    inventory: dataStore.inventoryAlerts,
     topRep: dataStore.topReps,
-    priceList: dataStore.priceLists,
-    priceItem: dataStore.priceListItems,
     region: dataStore.regions,
-    visit: dataStore.visitSchedules,
-    dailyVisit: dataStore.dailyVisits,
   };
   const list = map[entity];
   if (!list || !id) return null;
   return list.find((item) => item.id === id) || null;
 }
 
+const INVOICE_ITEM_ROW_COUNT = 6;
+
 function fieldText(name, label, value, attrs = "") {
+  const typeMatch = attrs.match(/type="([^"]+)"/);
+  const type = typeMatch ? typeMatch[1] : "text";
+  const restAttrs = typeMatch ? attrs.replace(typeMatch[0], "") : attrs;
   return `
     <div class="modal-field">
       <label for="fld-${name}">${escapeHtml(label)}</label>
-      <input id="fld-${name}" name="${escapeHtml(name)}" type="text" value="${escapeHtml(value)}" ${attrs} />
+      <input id="fld-${name}" name="${escapeHtml(name)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" ${restAttrs} />
     </div>
   `;
 }
@@ -73,11 +70,10 @@ function fieldSelect(name, label, value, options) {
   `;
 }
 
-function buildFields(entity, record, mode) {
+function buildFields(entity, record, mode, extra = {}) {
   const isEdit = mode === "edit";
   if (entity === "user") {
     return [
-      isEdit ? fieldText("user_id", t("form.user.userId"), record.user_id || "", "readonly") : "",
       fieldText("name", t("form.user.fullName"), record.name || ""),
       fieldEmail("email", t("form.user.email"), record.email || ""),
       fieldPassword(
@@ -86,51 +82,45 @@ function buildFields(entity, record, mode) {
         "",
         mode === "add" ? 'autocomplete="new-password" required' : 'autocomplete="new-password"'
       ),
-      fieldText("phone", t("form.user.phone"), record.phone || "", 'inputmode="tel"'),
-      fieldSelect("role", t("form.user.role"), record.role || "Sales Representative", [
-        { value: "Administrator", label: t("labels.role.administrator") },
-        { value: "Sales Manager", label: t("labels.role.salesManager") },
-        { value: "Sales Supervisor", label: t("labels.role.salesSupervisor") },
-        { value: "Sales Representative", label: t("labels.role.salesRep") },
-        { value: "Accountant", label: t("labels.role.accountant") },
-      ]),
+      fieldSelect(
+        "role",
+        t("form.user.role"),
+        record.role || BACKEND_ROLE_OPTIONS[0].value,
+        BACKEND_ROLE_OPTIONS.map(({ value, labelKey }) => ({ value, label: t(labelKey) }))
+      ),
       fieldSelect("status", t("form.user.status"), record.status || "Active", [
         { value: "Active", label: t("labels.userStatus.active") },
         { value: "On Leave", label: t("labels.userStatus.onLeave") },
         { value: "Inactive", label: t("labels.userStatus.inactive") },
       ]),
-      isEdit ? fieldText("created_at", t("form.user.createdAt"), record.created_at || "", "readonly") : "",
     ].join("");
   }
   if (entity === "customer") {
-    const customerId = isEdit ? record.customer_id || "" : "";
-    const customerIdField = isEdit
-      ? fieldText("customer_id", t("form.customer.id"), customerId, "readonly")
-      : `<p class="modal-hint">${t("modal.hint.customerId", { code: customerId || "Auto-generated" })}</p><input type="hidden" name="customer_id" value="${escapeHtml(customerId)}" />`;
-    
     return [
-      customerIdField,
-      fieldText("customer_name", t("form.customer.name"), record.customer_name || ""),
-      fieldText("shop_name", t("form.customer.shopName"), record.shop_name || ""),
-      fieldText("phone1", t("form.customer.phone1"), record.phone1 || ""),
-      fieldText("phone2", t("form.customer.phone2"), record.phone2 || ""),
+      fieldText("name", t("form.customer.name"), record.name || ""),
+      fieldText("contactName", t("form.customer.contactName"), record.contactName || ""),
+      fieldText("phone", t("form.customer.phone"), record.phone || ""),
+      fieldEmail("email", t("form.customer.email"), record.email || ""),
       fieldText("address", t("form.customer.address"), record.address || ""),
-      fieldSelect("region_id", t("form.customer.region"), record.region_id || "", regionSelectOptions()),
-      fieldSelect("assigned_user_id", t("form.customer.assignedUser"), record.assigned_user_id || "", userSelectOptions()),
-      fieldSelect("payment_type", t("form.customer.paymentType"), record.payment_type || "Cash", [
-        { value: "Cash", label: t("labels.payment.cash") },
-        { value: "Credit", label: t("labels.payment.credit") },
-        { value: "Check", label: t("labels.payment.check") },
-      ]),
-      fieldSelect("customer_type", t("form.customer.type"), record.customer_type || "Retail", [
+      fieldSelect("assignedSalesRep", t("form.customer.assignedUser"), record.assignedSalesRep || "", userSelectOptions()),
+      fieldSelect("customerType", t("form.customer.type"), record.customerType || "Retail", [
         { value: "Retail", label: t("labels.customerType.retail") },
         { value: "Wholesale", label: t("labels.customerType.wholesale") },
+        { value: "KeyAccount", label: t("labels.customerType.keyAccount") },
+      ]),
+      fieldSelect("paymentType", t("form.customer.paymentType"), record.paymentType || "Cash", [
+        { value: "Cash", label: t("labels.payment.cash") },
+        { value: "Credit", label: t("labels.payment.credit") },
+      ]),
+      fieldSelect("status", t("form.customer.status"), record.status || "Active", [
+        { value: "Active", label: t("status.active") },
+        { value: "Inactive", label: t("status.inactive") },
       ]),
       fieldText("notes", t("form.customer.notes"), record.notes || ""),
     ].join("");
   }
   if (entity === "sale") {
-    const inv = isEdit ? record.invoice || "" : nextInvoiceNumber();
+    const inv = isEdit ? record.invoice || "" : nextSaleInvoiceNumber();
     const invField = isEdit
       ? fieldText("invoice", t("form.sale.invoice"), record.invoice || "", "readonly")
       : `<p class="modal-hint">${t("modal.hint.invoice", { inv })}</p><input type="hidden" name="invoice" value="${escapeHtml(inv)}" />`;
@@ -146,26 +136,29 @@ function buildFields(entity, record, mode) {
     ].join("");
   }
   if (entity === "inventory") {
-    const nextProductId = record.product_id || `P${String(dataStore.inventoryAlerts.length + 1).padStart(3, "0")}`;
-    const initialDateAdded = record.date_added || new Date().toISOString();
-
     return [
-      fieldText(
-        "product_id",
-        t("form.inventory.productId"),
-        nextProductId,
-        "readonly"
-      ),
-      fieldText("product_name", t("form.inventory.productName"), record.product_name || record.name || ""),
+      fieldText("name", t("form.inventory.productName"), record.name || ""),
+      fieldText("productCode", t("form.inventory.productCode"), record.productCode || ""),
+      fieldText("barcode", t("form.inventory.barcode"), record.barcode || ""),
+      fieldText("category", t("form.inventory.category"), record.category || ""),
+      fieldText("brand", t("form.inventory.brand"), record.brand || ""),
       fieldText("description", t("form.inventory.description"), record.description || ""),
-      fieldText("unit", t("form.inventory.unit"), record.unit || ""),
-      fieldSelect("created_by", t("form.inventory.createdBy"), record.created_by || "", userSelectOptions()),
+      fieldSelect("unit", t("form.inventory.unit"), record.unit || "PIECE", [
+        { value: "PIECE", label: t("labels.unit.piece") },
+        { value: "BOX", label: t("labels.unit.box") },
+        { value: "KG", label: t("labels.unit.kg") },
+        { value: "LITER", label: t("labels.unit.liter") },
+        { value: "METER", label: t("labels.unit.meter") },
+        { value: "PACK", label: t("labels.unit.pack") },
+      ]),
+      fieldText("basePrice", t("form.inventory.basePrice"), record.basePrice || "", 'placeholder="0.00" inputmode="decimal"'),
+      fieldText("currency", t("form.inventory.currency"), record.currency || "SYP"),
+      fieldText("taxRate", t("form.inventory.taxRate"), record.taxRate || "", 'placeholder="0" inputmode="decimal"'),
       fieldSelect("status", t("form.inventory.status"), record.status || "Active", [
         { value: "Active", label: t("labels.productStatus.active") },
         { value: "Inactive", label: t("labels.productStatus.inactive") },
         { value: "Archived", label: t("labels.productStatus.archived") },
       ]),
-      fieldText("date_added", t("form.inventory.dateAdded"), initialDateAdded, "readonly"),
     ].join("");
   }
   if (entity === "topRep") {
@@ -182,12 +175,16 @@ function buildFields(entity, record, mode) {
   if (entity === "priceList") {
     return [
       fieldText("name", t("form.priceList.name"), record.name || "", `placeholder="${escapeHtml(t("form.priceList.namePh"))}"`),
-      fieldText("desc", t("form.priceList.desc"), record.desc || "", `placeholder="${escapeHtml(t("form.priceList.descPh"))}"`),
+      fieldText("description", t("form.priceList.desc"), record.description || "", `placeholder="${escapeHtml(t("form.priceList.descPh"))}"`),
+      fieldSelect("customerType", t("form.priceList.customerType"), record.customerType || "Retail", [
+        { value: "Retail", label: t("labels.customerType.retail") },
+        { value: "Wholesale", label: t("labels.customerType.wholesale") },
+        { value: "KeyAccount", label: t("labels.customerType.keyAccount") },
+      ]),
       fieldSelect("status", t("form.priceList.status"), record.status || "Active", [
         { value: "Active", label: t("status.active") },
         { value: "Inactive", label: t("status.inactive") },
       ]),
-      fieldSelect("created_by", t("form.priceList.createdBy"), record.created_by || "", userSelectOptions()),
     ].join("");
   }
   if (entity === "region") {
@@ -203,72 +200,84 @@ function buildFields(entity, record, mode) {
     ].join("");
   }
   if (entity === "visit") {
+    const customerOptions = extra.customerOptions || [];
+    const customerField = customerOptions.length
+      ? fieldSelect("customerId", t("form.visit.customer"), record.customerId || "", customerOptions)
+      : `<p class="modal-hint">${escapeHtml(t("modal.hint.invoiceNoCustomer"))}</p>`;
     return [
-      fieldText("week_start_date", t("form.visit.weekStartDate"), record.week_start_date ? record.week_start_date.split("T")[0] : "", 'type="date"'),
-      fieldSelect("status", t("form.visit.status"), record.status || "Planned", [
-        { value: "Planned", label: t("visits.statusPlanned") },
-        { value: "Confirmed", label: t("visits.statusConfirmed") },
-        { value: "Completed", label: t("visits.statusCompleted") },
-        { value: "Archived", label: t("status.archived") },
-      ]),
-      fieldText("user_name", t("form.visit.userName"), record.user_name || ""),
-      fieldSelect("created_by", t("form.visit.createdBy"), record.created_by || "", userSelectOptions()),
-      isEdit ? fieldText("created_at", t("form.visit.createdAt"), record.created_at || "", "readonly") : "",
+      customerField,
+      fieldText("visitDate", t("form.visit.visitDate"), record.visitDate ? record.visitDate.split("T")[0] : "", 'type="date"'),
+      fieldText("purpose", t("form.visit.purpose"), record.purpose || "", `placeholder="${escapeHtml(t("form.visit.purposePh"))}"`),
+      fieldText("location", t("form.visit.location"), record.location || "", `placeholder="${escapeHtml(t("form.visit.locationPh"))}"`),
+      fieldText("notes", t("form.visit.notes"), record.notes || ""),
     ].join("");
   }
-  if (entity === "dailyVisit") {
+  if (entity === "visitComplete") {
     return [
-      fieldText("visit_date", t("form.dailyVisit.visitDate"), record.visit_date || "", 'type="date"'),
-      fieldText("check_in_time", t("form.dailyVisit.checkInTime"), record.check_in_time || "", 'type="time"'),
-      fieldSelect("status", t("form.dailyVisit.status"), record.status || "Pending", [
-        { value: "Pending", label: t("labels.visitStatus.pending") },
-        { value: "Completed", label: t("labels.visitStatus.completed") },
-        { value: "Cancelled", label: t("labels.visitStatus.cancelled") },
-      ]),
-      fieldText("notes", t("form.dailyVisit.notes"), record.notes || ""),
-      fieldText("customer_name", t("form.dailyVisit.customerName"), record.customer_name || ""),
-      fieldText("user_name", t("form.dailyVisit.userName"), record.user_name || ""),
-      fieldSelect("region_id", t("form.dailyVisit.region"), record.region_id || "", regionSelectOptions()),
-      fieldSelect("created_by", t("form.dailyVisit.createdBy"), record.created_by || "", userSelectOptions()),
-      isEdit ? fieldText("created_at", t("form.dailyVisit.createdAt"), record.created_at || "", "readonly") : "",
+      fieldText("outcome", t("form.visitComplete.outcome"), record.outcome || "", `placeholder="${escapeHtml(t("form.visitComplete.outcomePh"))}"`),
+      fieldText("nextAction", t("form.visitComplete.nextAction"), record.nextAction || ""),
+      fieldText("nextVisitDate", t("form.visitComplete.nextVisitDate"), record.nextVisitDate ? record.nextVisitDate.split("T")[0] : "", 'type="date"'),
     ].join("");
   }
   if (entity === "priceItem") {
-    const plOptions = priceListSelectOptions();
-    if (!plOptions.length) {
-      return `<p class="modal-hint">${escapeHtml(t("modal.hint.priceItemNoList"))}</p>`;
+    const productOptions = extra.productOptions || [];
+    if (!productOptions.length) {
+      return `<p class="modal-hint">${escapeHtml(t("modal.hint.priceItemNoProduct"))}</p>`;
     }
-    const defaultPl = plOptions[0]?.value || "";
+    const defaultProduct = productOptions[0]?.value || "";
     return [
-      fieldSelect("priceListId", t("form.priceItem.pricelist"), record.priceListId || defaultPl, plOptions),
-      fieldText("product_name", t("form.priceItem.productName"), record.product_name || ""),
+      fieldSelect("productId", t("form.priceItem.product"), record.productId || defaultProduct, productOptions),
       fieldText("price", t("form.priceItem.price"), record.price || "", `placeholder="${escapeHtml(t("form.priceItem.pricePh"))}" inputmode="decimal"`),
+      fieldText("currency", t("form.priceItem.currency"), record.currency || "SYP"),
+      `<input type="hidden" name="_priceListId" value="${escapeHtml(record.priceListId || "")}" />`,
+      record.itemIndex !== undefined && record.itemIndex !== null
+        ? `<input type="hidden" name="_itemIndex" value="${escapeHtml(String(record.itemIndex))}" />`
+        : "",
     ].join("");
   }
   if (entity === "invoice") {
-    const invNum = isEdit ? record.Invoice_number || "" : nextInvoiceNumber();
-    const invField = isEdit
-      ? fieldText("Invoice_number", t("form.invoice.invoiceNumber"), record.Invoice_number || "", "readonly")
-      : `<p class="modal-hint">${t("modal.hint.invoiceNumber", { num: invNum })}</p><input type="hidden" name="Invoice_number" value="${escapeHtml(invNum)}" />`;
+    const customerOptions = extra.customerOptions || [];
+    const productOptions = extra.productOptions || [];
+    const existingItems = record.items || [];
+
+    const itemRows = Array.from({ length: INVOICE_ITEM_ROW_COUNT }).map((_, index) => {
+      const item = existingItems[index] || {};
+      const productSelectOptions = [{ value: "", label: t("form.invoice.itemNone") }, ...productOptions];
+      return `
+        <div class="invoice-item-row">
+          ${fieldSelect(`item_${index}_productId`, t("form.invoice.itemProduct", { n: index + 1 }), item.productId || "", productSelectOptions)}
+          ${fieldText(`item_${index}_qty`, t("form.invoice.itemQty"), item.quantity || "", 'inputmode="numeric" placeholder="0"')}
+        </div>
+      `;
+    }).join("");
+
+    const customerField = customerOptions.length
+      ? fieldSelect("customerId", t("form.invoice.customer"), record.customerId || "", customerOptions)
+      : `<p class="modal-hint">${escapeHtml(t("modal.hint.invoiceNoCustomer"))}</p>`;
+
     return [
-      invField,
-      fieldText("customer_id", t("form.invoice.customerId"), record.customer_id || "", 'inputmode="numeric"'),
-      fieldSelect("created_by", t("form.invoice.createdBy"), record.created_by || "", userSelectOptions()),
-      fieldText("Invoice_date", t("form.invoice.invoiceDate"), record.Invoice_date ? record.Invoice_date.split("T")[0] : "", 'type="date"'),
-      fieldText("total_Amount", t("form.invoice.totalAmount"), record.total_Amount || "", 'placeholder="0.00" inputmode="decimal"'),
-      fieldText("paid_Amount", t("form.invoice.paidAmount"), record.paid_Amount || "", 'placeholder="0.00" inputmode="decimal"'),
-      fieldText("remaining_Amount", t("form.invoice.remainingAmount"), record.remaining_Amount || "", 'placeholder="0.00" inputmode="decimal" readonly'),
-      fieldSelect("status", t("form.invoice.status"), record.status || "Pending", [
-        { value: "Paid", label: t("labels.invoiceStatus.paid") },
-        { value: "Pending", label: t("labels.invoiceStatus.pending") },
-        { value: "Overdue", label: t("labels.invoiceStatus.overdue") },
+      customerField,
+      fieldText("dueDate", t("form.invoice.dueDate"), record.dueDate ? record.dueDate.split("T")[0] : "", 'type="date"'),
+      fieldSelect("discountType", t("form.invoice.discountType"), record.discountType || "NONE", [
+        { value: "NONE", label: t("labels.discountType.none") },
+        { value: "AMOUNT", label: t("labels.discountType.amount") },
+        { value: "PERCENTAGE", label: t("labels.discountType.percentage") },
       ]),
-      fieldSelect("creation_method", t("form.invoice.creationMethod"), record.creation_method || "Mobile", [
-        { value: "Mobile", label: t("labels.creationMethod.mobile") },
-        { value: "Web", label: t("labels.creationMethod.web") },
-        { value: "Manual", label: t("labels.creationMethod.manual") },
-      ]),
-      fieldText("notes", t("form.invoice.notes"), record.notes || "", 'placeholder="' + escapeHtml(t("form.invoice.notesPh")) + '"'),
+      fieldText("discountValue", t("form.invoice.discountValue"), record.discountValue || "", 'inputmode="decimal" placeholder="0"'),
+      fieldText("notes", t("form.invoice.notes"), record.notes || "", `placeholder="${escapeHtml(t("form.invoice.notesPh"))}"`),
+      `<input type="hidden" name="source" value="MANUAL" />`,
+      `
+        <div class="modal-section">
+          <h4>${escapeHtml(t("invoices.itemsTitle"))}</h4>
+          <p class="modal-hint">${escapeHtml(t("form.invoice.itemsHint"))}</p>
+          <div class="invoice-items-list">${itemRows}</div>
+        </div>
+      `,
+    ].join("");
+  }
+  if (entity === "payment") {
+    return [
+      fieldText("amount", t("form.payment.amount"), record.amount || "", 'inputmode="decimal" placeholder="0.00"'),
     ].join("");
   }
   return "";
@@ -282,15 +291,13 @@ function modalTitle(entity, mode) {
   return t(`modalTitle.form.${variant}`);
 }
 
-export function buildModalMarkup(entity, mode, id, initialData = {}) {
+export function buildModalMarkup(entity, mode, id, initialData = {}, extra = {}) {
   const record = mode === "edit" && id ? { ...(getRecord(entity, id) || {}), ...initialData } : initialData;
   const title = modalTitle(entity, mode);
-  const fields = buildFields(entity, record || {}, mode);
+  const fields = buildFields(entity, record || {}, mode, extra);
   const entityAttr = escapeHtml(entity);
   const modeAttr = escapeHtml(mode);
   const idAttr = id ? escapeHtml(id) : "";
-
-  const invoiceItemsSection = entity === "invoice" && mode === "edit" && id ? buildInvoiceItemsSection(id) : "";
 
   return `
     <div class="modal-overlay is-open" data-modal-overlay role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -299,9 +306,9 @@ export function buildModalMarkup(entity, mode, id, initialData = {}) {
           <h3 id="modalTitle">${escapeHtml(title)}</h3>
           <button type="button" class="modal-close" data-action="close-modal" aria-label="${escapeHtml(t("common.close"))}">&times;</button>
         </div>
+        <div class="modal-error" data-modal-error hidden></div>
         <form id="dashboardEntityForm" class="modal-form" data-entity="${entityAttr}" data-mode="${modeAttr}" data-record-id="${idAttr}">
           ${fields}
-          ${invoiceItemsSection}
         </form>
         <div class="modal-footer">
           <button type="button" class="btn-outline" data-action="close-modal">${escapeHtml(t("common.cancel"))}</button>
@@ -321,32 +328,109 @@ function readForm(form) {
   return out;
 }
 
-export function handleEntityFormSubmit(form) {
+function applyFormError(form, err) {
+  const banner = form.closest(".modal-card")?.querySelector("[data-modal-error]");
+  if (banner) {
+    banner.textContent = err?.message || t("common.loadError");
+    banner.hidden = false;
+  }
+  form.querySelectorAll(".field-error").forEach((el) => el.remove());
+  if (Array.isArray(err?.errors)) {
+    err.errors.forEach((fieldError) => {
+      const fieldName = fieldError?.field || fieldError?.param || fieldError?.path;
+      const message = fieldError?.message;
+      if (!fieldName || !message) return;
+      const input = form.querySelector(`[name="${fieldName}"]`);
+      const container = input?.closest(".modal-field");
+      if (!container) return;
+      const span = document.createElement("small");
+      span.className = "field-error";
+      span.textContent = message;
+      container.appendChild(span);
+    });
+  }
+}
+
+const ASYNC_ENTITIES = new Set(["user", "customer", "inventory", "priceList", "priceItem", "invoice", "payment", "visit", "visitComplete"]);
+
+export async function handleEntityFormSubmit(form) {
   const entity = form.dataset.entity;
   const mode = form.dataset.mode;
   const recordId = form.dataset.recordId || "";
   const payload = readForm(form);
 
-  if (entity === "user") {
-    upsertUser(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "customer") {
-    upsertCustomer(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "sale") {
+  if (ASYNC_ENTITIES.has(entity)) {
+    try {
+      if (entity === "user") {
+        const { password, ...rest } = payload;
+        if (mode === "edit" && recordId) {
+          await updateUser(recordId, rest);
+          if (password) await updateUserPassword(recordId, password);
+        } else {
+          await createUser({ ...rest, password });
+        }
+      } else if (entity === "customer") {
+        if (mode === "edit" && recordId) await updateCustomer(recordId, payload);
+        else await createCustomer(payload);
+      } else if (entity === "inventory") {
+        if (mode === "edit" && recordId) await updateProduct(recordId, payload);
+        else await createProduct(payload);
+      } else if (entity === "priceList") {
+        if (mode === "edit" && recordId) await updatePriceList(recordId, payload);
+        else await createPriceList(payload);
+      } else if (entity === "priceItem") {
+        const { _priceListId, _itemIndex, ...item } = payload;
+        if (mode === "edit" && _itemIndex !== undefined && _itemIndex !== "") {
+          await updatePriceListItem(_priceListId, Number(_itemIndex), item);
+        } else {
+          await addPriceListItem(_priceListId, item);
+        }
+      } else if (entity === "invoice") {
+        const items = [];
+        for (let i = 0; i < INVOICE_ITEM_ROW_COUNT; i++) {
+          const productId = payload[`item_${i}_productId`];
+          const qty = Number(payload[`item_${i}_qty`]);
+          if (productId && qty > 0) items.push({ productId, quantity: qty });
+        }
+        const invoicePayload = {
+          customerId: payload.customerId,
+          items,
+          discountType: payload.discountType,
+          discountValue: payload.discountValue || 0,
+          dueDate: payload.dueDate,
+          source: payload.source || "MANUAL",
+          notes: payload.notes,
+        };
+        if (mode === "edit" && recordId) await updateInvoice(recordId, invoicePayload);
+        else await createInvoice(invoicePayload);
+      } else if (entity === "payment") {
+        await recordInvoicePayment(recordId, { amount: payload.amount });
+      } else if (entity === "visit") {
+        const visitPayload = {
+          customerId: payload.customerId,
+          visitDate: payload.visitDate,
+          purpose: payload.purpose,
+          location: payload.location,
+          notes: payload.notes,
+        };
+        if (mode === "edit" && recordId) await updateVisit(recordId, visitPayload);
+        else await createVisit(visitPayload);
+      } else if (entity === "visitComplete") {
+        await completeVisit(recordId, {
+          outcome: payload.outcome,
+          nextAction: payload.nextAction,
+          nextVisitDate: payload.nextVisitDate,
+        });
+      }
+      return true;
+    } catch (err) {
+      applyFormError(form, err);
+      return false;
+    }
+  }
+
+  if (entity === "sale") {
     upsertSale(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "inventory") {
-    upsertInventoryAlert(
       mode === "edit" && recordId
         ? { id: recordId, ...payload }
         : { ...payload }
@@ -357,111 +441,11 @@ export function handleEntityFormSubmit(form) {
         ? { id: recordId, ...payload }
         : { ...payload }
     );
-  } else if (entity === "priceList") {
-    upsertPriceList(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
   } else if (entity === "region") {
     upsertRegion(
       mode === "edit" && recordId
         ? { id: recordId, ...payload }
         : { ...payload }
     );
-  } else if (entity === "visit") {
-    upsertVisitSchedule(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "dailyVisit") {
-    upsertDailyVisit(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "priceItem") {
-    if (mode !== "edit" && !payload.priceListId) {
-      return;
-    }
-    upsertPriceListItem(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
-  } else if (entity === "invoice") {
-    upsertInvoice(
-      mode === "edit" && recordId
-        ? { id: recordId, ...payload }
-        : { ...payload }
-    );
   }
-}
-
-function buildInvoiceItemsTable(items) {
-  const rows = items.length > 0
-    ? items.map(item => `
-        <tr>
-          <td>${escapeHtml(item.item_id)}</td>
-          <td>${escapeHtml(item.invoice_id)}</td>
-          <td>${escapeHtml(item.product_id)}</td>
-          <td>${escapeHtml(item.quantity)}</td>
-          <td>${escapeHtml(item.unit_id || "—")}</td>
-          <td>${escapeHtml(item.unit_price)}</td>
-          <td>${escapeHtml(item.total_price)}</td>
-        </tr>
-      `).join("")
-    : `<tr><td colspan="7" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`;
-
-  return `
-    <div class="table-shell">
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>${escapeHtml(t("invoices.thItemId"))}</th>
-              <th>${escapeHtml(t("invoices.thInvoiceId"))}</th>
-              <th>${escapeHtml(t("invoices.thProjectId"))}</th>
-              <th>${escapeHtml(t("invoices.thQuantity"))}</th>
-              <th>${escapeHtml(t("invoices.thUnit"))}</th>
-              <th>${escapeHtml(t("invoices.thUnitPrice"))}</th>
-              <th>${escapeHtml(t("invoices.thTotalPrice"))}</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-function buildInvoiceItemsSection(invoiceId) {
-  const items = getInvoiceItems(invoiceId);
-  return `
-    <div class="modal-section">
-      <h4>${escapeHtml(t("invoices.itemsTitle"))}</h4>
-      ${buildInvoiceItemsTable(items)}
-    </div>
-  `;
-}
-
-export function buildInvoiceItemsModalMarkup(invoiceId) {
-  const items = getInvoiceItems(invoiceId);
-  return `
-    <div class="modal-overlay is-open" data-modal-overlay role="dialog" aria-modal="true" aria-labelledby="invoiceItemsModalTitle">
-      <div class="modal-card modal-card--wide">
-        <div class="modal-header">
-          <h3 id="invoiceItemsModalTitle">${escapeHtml(t("invoices.itemsTitle"))}</h3>
-          <button type="button" class="modal-close" data-action="close-modal" aria-label="${escapeHtml(t("common.close"))}">&times;</button>
-        </div>
-        <div class="modal-body">
-          ${buildInvoiceItemsTable(items)}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-outline" data-action="close-modal">${escapeHtml(t("common.close"))}</button>
-        </div>
-      </div>
-    </div>
-  `;
 }

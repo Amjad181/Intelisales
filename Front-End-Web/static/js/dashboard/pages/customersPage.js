@@ -1,24 +1,30 @@
-import { dataStore, getRegionName, getUserName } from "../state/dataStore.js";
+import { getUserName } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
+import { renderPager } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
+import { getListPage } from "../state/appState.js";
+import { listCustomers } from "../../api/services/customersService.js";
 
-export function renderCustomersPage() {
-  const rows = dataStore.customers
-    .map(
-      (row) => `
+export async function renderCustomersPage() {
+  const page = getListPage("customers");
+  const { items, pagination } = await listCustomers({ page, limit: 20 });
+
+  const rows = items
+    .map((row) => {
+      const id = row.id || row._id;
+      return `
         <tr>
-          <td class="td-muted">${escapeHtml(row.customer_id)}</td>
-          <td class="td-strong">${escapeHtml(row.customer_name)}</td>
-          <td>${escapeHtml(row.shop_name)}</td>
-          <td>${escapeHtml(row.phone1)}${row.phone2 ? `, ${escapeHtml(row.phone2)}` : ''}</td>
-          <td>${escapeHtml(getRegionName(row.region_id))}</td>
-          <td>${escapeHtml(getUserName(row.assigned_user_id))}</td>
-          <td><span class="badge badge--${row.customer_type === 'Retail' ? 'ok' : 'info'}">${escapeHtml(row.customer_type)}</span></td>
-          <td class="td-actions">${renderRowActions("customer", row.id)}</td>
+          <td class="td-strong">${escapeHtml(row.name)}</td>
+          <td>${escapeHtml(row.contactName || "—")}</td>
+          <td>${escapeHtml(row.phone || "—")}</td>
+          <td>${escapeHtml(row.email || "—")}</td>
+          <td>${escapeHtml(getUserName(row.assignedSalesRep))}</td>
+          <td><span class="badge badge--${row.customerType === 'Retail' ? 'ok' : 'info'}">${escapeHtml(row.customerType)}</span></td>
+          <td class="td-actions">${renderRowActions("customer", id)}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
 
   return `
@@ -32,20 +38,20 @@ export function renderCustomersPage() {
           <table class="data-table">
             <thead>
               <tr>
-                <th>${escapeHtml(t("customers.thId"))}</th>
                 <th>${escapeHtml(t("customers.thName"))}</th>
-                <th>${escapeHtml(t("customers.thShopName"))}</th>
+                <th>${escapeHtml(t("customers.thContactName"))}</th>
                 <th>${escapeHtml(t("customers.thPhone"))}</th>
-                <th>${escapeHtml(t("customers.thRegion"))}</th>
+                <th>${escapeHtml(t("customers.thEmail"))}</th>
                 <th>${escapeHtml(t("customers.thAssignedUser"))}</th>
                 <th>${escapeHtml(t("customers.thType"))}</th>
                 <th class="th-actions">${escapeHtml(t("common.actions"))}</th>
               </tr>
             </thead>
-            <tbody id="customersTableBody">${rows}</tbody>
+            <tbody id="customersTableBody">${rows || `<tr><td colspan="7" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`}</tbody>
           </table>
         </div>
       </div>
+      ${renderPager(pagination, "customers")}
     </section>
   `;
 }

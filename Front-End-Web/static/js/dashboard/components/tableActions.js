@@ -13,7 +13,7 @@ export function renderRowActions(entity, id) {
     </button>
   `;
 
-  if (entity === "invoice" || entity === "inventory" || entity === "priceList" || entity === "region" || entity === "visit") {
+  if (entity === "invoice" || entity === "inventory" || entity === "priceList" || entity === "region") {
     actions = `
       <button type="button" class="btn-text btn-text--edit" data-action="open-entity-form" data-entity="${e}" data-mode="edit" data-id="${i}">
         ${escapeHtml(t("common.edit"))}

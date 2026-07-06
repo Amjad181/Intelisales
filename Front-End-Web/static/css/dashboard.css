@@ -63,6 +63,11 @@ html[dir="rtl"] body {
   color: #374151;
 }
 
+.badge--info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .dashboard-layout {
   min-height: 100vh;
   display: grid;
@@ -812,6 +817,130 @@ html[dir="rtl"] body {
   margin: 0 0 0.35rem;
   font-size: 0.86rem;
   color: var(--muted);
+}
+
+.modal-error {
+  margin: 0 1.2rem 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(214, 61, 61, 0.1);
+  border: 1px solid rgba(214, 61, 61, 0.3);
+  color: #a8302f;
+  font-size: 0.88rem;
+}
+
+.field-error {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  color: #a8302f;
+}
+
+.async-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.async-state--error p {
+  color: #a8302f;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 0.85rem;
+}
+
+.pager-status {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.invoice-items-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.invoice-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.6rem;
+}
+
+.invoice-item-row .modal-field {
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .invoice-item-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toolbar-select {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+  background: var(--surface);
+  min-width: 220px;
+}
+
+.toolbar-select:focus {
+  outline: 2px solid rgba(30, 94, 255, 0.2);
+  border-color: var(--primary);
+}
+
+.recommendations-results {
+  margin-top: 1rem;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.recommendation-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: var(--surface);
+}
+
+.recommendation-card h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.recommendation-card__price {
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.recommendation-card__reason {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+.modal-section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.modal-section h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
 }
 
 .modal-footer {

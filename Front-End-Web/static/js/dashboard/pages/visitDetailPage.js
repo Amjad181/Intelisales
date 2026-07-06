@@ -1,91 +1,97 @@
-import { dataStore, getRegionName, getUserName, getVisitLines } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
+import { renderErrorState } from "../components/asyncState.js";
+import { getVisit } from "../../api/services/visitsService.js";
 
-export function renderVisitDetailPage() {
-  const hash = window.location.hash.replace("#", "").trim();
-  const visitId = hash.split("/")[1] || "";
-  const visit = dataStore.visitSchedules.find((item) => item.id === visitId);
-
-  if (!visit) {
-    return `
-      <section class="panel panel--flush">
-        <div class="toolbar">
-          <button class="secondary-btn" type="button" data-action="nav-route" data-route="visits">${escapeHtml(t("common.list"))}</button>
-        </div>
-        <div class="panel-body">
-          <p>${escapeHtml(t("common.notFound"))}</p>
-        </div>
-      </section>
-    `;
-  }
-
-  const lines = getVisitLines(visitId);
-  const lineRows = lines.length > 0
-    ? lines.map((line) => {
-        const weekStart = new Date(visit.week_start_date);
-        const dayOffset = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(line.day_of_week);
-        const visitDate = new Date(weekStart);
-        visitDate.setDate(weekStart.getDate() + dayOffset);
-        const dateStr = visitDate.toISOString().split('T')[0];
-        return `
-          <tr>
-            <td>${escapeHtml(line.day_of_week)}</td>
-            <td>${escapeHtml(getRegionName(line.region_id))}</td>
-          </tr>
-        `;
-      }).join("")
-    : `<tr><td colspan="3" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`;
-
+function notFound() {
   return `
     <section class="panel panel--flush">
       <div class="toolbar">
         <button class="secondary-btn" type="button" data-action="nav-route" data-route="visits">${escapeHtml(t("common.list"))}</button>
-        <button class="primary-btn" type="button" data-action="open-entity-form" data-entity="visit" data-mode="edit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("common.edit"))}</button>
       </div>
+      <div class="panel-body">
+        <p>${escapeHtml(t("common.notFound"))}</p>
+      </div>
+    </section>
+  `;
+}
+
+function fmtDate(value) {
+  return value ? new Date(value).toLocaleDateString() : "—";
+}
+
+export async function renderVisitDetailPage() {
+  const hash = window.location.hash.replace("#", "").trim();
+  const visitId = hash.split("/")[1] || "";
+
+  if (!visitId) return notFound();
+
+  let visit;
+  try {
+    visit = await getVisit(visitId);
+  } catch (err) {
+    return renderErrorState(err, "retry-route");
+  }
+
+  if (!visit) return notFound();
+
+  return `
+    <section class="panel panel--flush">
+      <div class="toolbar toolbar--split">
+        <button class="secondary-btn" type="button" data-action="nav-route" data-route="visits">${escapeHtml(t("common.list"))}</button>
+        <div class="actions">
+          <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="visit" data-mode="edit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("common.edit"))}</button>
+          <button class="secondary-btn" type="button" data-action="confirm-visit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.confirm"))}</button>
+          <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="visitComplete" data-mode="edit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.complete"))}</button>
+          <button class="btn-text btn-text--warning" type="button" data-action="cancel-visit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.cancel"))}</button>
+        </div>
+      </div>
+
       <div class="table-shell">
         <div class="table-wrap">
           <table class="data-table">
             <tbody>
               <tr>
-                <th>${escapeHtml(t("visits.thWeekStartDate"))}</th>
-                <td>${escapeHtml(visit.week_start_date ? new Date(visit.week_start_date).toLocaleDateString() : "—")}</td>
+                <th>${escapeHtml(t("visits.thCustomer"))}</th>
+                <td>${escapeHtml(visit.customerSnapshot?.name || visit.customerId || "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("visits.thCreatedAt"))}</th>
-                <td>${escapeHtml(visit.created_at ? new Date(visit.created_at).toLocaleDateString() : "—")}</td>
+                <th>${escapeHtml(t("visits.thSalesRep"))}</th>
+                <td>${escapeHtml(visit.salesRepSnapshot?.name || "—")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("visits.thVisitDate"))}</th>
+                <td>${escapeHtml(fmtDate(visit.visitDate))}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("visits.thStatus"))}</th>
-                <td>${escapeHtml(visit.status)}</td>
+                <td>${escapeHtml(visit.status || "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("visits.thUserName"))}</th>
-                <td>${escapeHtml(visit.user_name)}</td>
+                <th>${escapeHtml(t("form.visit.purpose"))}</th>
+                <td>${escapeHtml(visit.purpose || "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("visits.thCreatedBy"))}</th>
-                <td>${escapeHtml(getUserName(visit.created_by))}</td>
+                <th>${escapeHtml(t("form.visit.location"))}</th>
+                <td>${escapeHtml(visit.location || "—")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("form.visit.notes"))}</th>
+                <td>${escapeHtml(visit.notes || "—")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("form.visitComplete.outcome"))}</th>
+                <td>${escapeHtml(visit.outcome || "—")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("form.visitComplete.nextAction"))}</th>
+                <td>${escapeHtml(visit.nextAction || "—")}</td>
+              </tr>
+              <tr>
+                <th>${escapeHtml(t("form.visitComplete.nextVisitDate"))}</th>
+                <td>${escapeHtml(fmtDate(visit.nextVisitDate))}</td>
               </tr>
             </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="toolbar" style="margin-top:1.5rem; justify-content:flex-start;">
-        <h3>${escapeHtml(t("visits.itemsTitle"))}</h3>
-      </div>
-
-      <div class="table-shell">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>${escapeHtml(t("visits.thDayOfWeek"))}</th>
-                <th>${escapeHtml(t("visits.thRegion"))}</th>
-              </tr>
-            </thead>
-            <tbody>${lineRows}</tbody>
           </table>
         </div>
       </div>

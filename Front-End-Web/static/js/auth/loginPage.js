@@ -1,22 +1,15 @@
 import { t, setLocale, initI18n } from "../i18n/i18n.js";
 import { renderLangSwitch } from "../i18n/langSwitch.js";
+import { login } from "../api/authService.js";
+import { roleKeyFromBackend } from "../api/roleMap.js";
 
 const USER_ROLE_STORAGE_KEY = "intellisalesUserRole";
-const VALID_USER_ROLES = [
-  "administrator",
-  "salesManager",
-  "salesSupervisor",
-  "salesRep",
-  "accountant",
-];
 
 initI18n();
 
 const loginForm = document.getElementById("loginForm");
-const roleInput = document.getElementById("role");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
-const roleError = document.getElementById("roleError");
 const emailError = document.getElementById("emailError");
 const passwordError = document.getElementById("passwordError");
 const submitButton = document.getElementById("submitButton");
@@ -37,17 +30,6 @@ function applyLoginTranslations() {
 
   const brandPanel = document.querySelector(".brand-panel");
   if (brandPanel) brandPanel.setAttribute("aria-label", t("login.brandAria"));
-
-  const savedRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-  const prevRole = roleInput.value || savedRole;
-  roleInput.innerHTML = `
-    <option value="" disabled ${prevRole ? "" : "selected"}>${t("login.rolePlaceholder")}</option>
-    <option value="administrator" ${prevRole === "administrator" ? "selected" : ""}>${t("login.roleAdmin")}</option>
-    <option value="salesManager" ${prevRole === "salesManager" ? "selected" : ""}>${t("login.roleManager")}</option>
-    <option value="salesSupervisor" ${prevRole === "salesSupervisor" ? "selected" : ""}>${t("login.roleSupervisor")}</option>
-    <option value="salesRep" ${prevRole === "salesRep" ? "selected" : ""}>${t("login.roleSalesRep")}</option>
-    <option value="accountant" ${prevRole === "accountant" ? "selected" : ""}>${t("login.roleAccountant")}</option>
-  `;
 
   togglePasswordButton.setAttribute(
     "aria-label",
@@ -78,25 +60,18 @@ togglePasswordButton.addEventListener("click", () => {
 });
 
 function clearErrors() {
-  roleError.textContent = "";
   emailError.textContent = "";
   passwordError.textContent = "";
   formStatus.textContent = "";
 }
 
-loginForm.addEventListener("submit", (event) => {
+loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearErrors();
 
   let hasError = false;
-  const role = roleInput.value;
   const email = emailInput.value.trim();
   const password = passwordInput.value;
-
-  if (!role) {
-    roleError.textContent = t("login.errRole");
-    hasError = true;
-  }
 
   if (!email) {
     emailError.textContent = t("login.errEmail");
@@ -115,17 +90,22 @@ loginForm.addEventListener("submit", (event) => {
   submitButton.disabled = true;
   submitButton.textContent = t("login.signingIn");
 
-  window.setTimeout(() => {
-    submitButton.disabled = false;
-    submitButton.textContent = t("login.submit");
-    if (!VALID_USER_ROLES.includes(role)) {
-      formStatus.textContent = t("login.errRole");
+  try {
+    const data = await login(email, password);
+    const roleKey = roleKeyFromBackend(data?.user?.role);
+    if (!roleKey) {
+      formStatus.textContent = t("login.errUnsupportedRole");
       return;
     }
 
-    localStorage.setItem(USER_ROLE_STORAGE_KEY, role);
+    localStorage.setItem(USER_ROLE_STORAGE_KEY, roleKey);
     window.location.href = "./dashboard.html";
-  }, 800);
+  } catch (err) {
+    formStatus.textContent = err?.message || t("login.errGeneric");
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = t("login.submit");
+  }
 });
 
 applyLoginTranslations();

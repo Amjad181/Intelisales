@@ -1,33 +1,38 @@
-import { dataStore } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
+import { renderPager } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { labelRole, labelUserStatus } from "../../i18n/labels.js";
+import { labelUserStatus } from "../../i18n/labels.js";
+import { roleKeyFromBackend } from "../../api/roleMap.js";
+import { getListPage } from "../state/appState.js";
+import { listUsers } from "../../api/services/usersService.js";
 
-function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : "—";
+function labelBackendRole(role) {
+  const key = roleKeyFromBackend(role);
+  return key ? t(`labels.role.${key}`) : role;
 }
 
-export function renderUsersPage() {
-  const rows = dataStore.users
-    .map(
-      (u) => `
+export async function renderUsersPage() {
+  const page = getListPage("users");
+  const { items, pagination } = await listUsers({ page, limit: 20 });
+
+  const rows = items
+    .map((u) => {
+      const id = u.id || u._id;
+      return `
         <tr>
           <td>
             <div class="cell-stack">
               <span class="td-strong">${escapeHtml(u.name)}</span>
-              <span class="td-sub">${escapeHtml(u.email)}${u.user_id ? ` • ${escapeHtml(String(u.user_id))}` : ""}</span>
+              <span class="td-sub">${escapeHtml(u.email)}</span>
             </div>
           </td>
-          <td>${escapeHtml(labelRole(u.role))}</td>
-          <td>${escapeHtml(u.phone || "—")}</td>
-          <td>${escapeHtml(formatDate(u.created_at))}</td>
+          <td>${escapeHtml(labelBackendRole(u.role))}</td>
           <td><span class="badge ${u.status === "Active" ? "badge--ok" : u.status === "On Leave" ? "badge--warn" : "badge--neutral"}">${escapeHtml(labelUserStatus(u.status))}</span></td>
-          <td class="td-actions">${renderRowActions("user", u.id)}</td>
+          <td class="td-actions">${renderRowActions("user", id)}</td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
 
   return `
@@ -43,16 +48,15 @@ export function renderUsersPage() {
               <tr>
                 <th>${escapeHtml(t("users.thUser"))}</th>
                 <th>${escapeHtml(t("users.thRole"))}</th>
-                <th>${escapeHtml(t("users.thPhone"))}</th>
-                <th>${escapeHtml(t("users.thCreatedAt"))}</th>
                 <th>${escapeHtml(t("users.thStatus"))}</th>
                 <th class="th-actions">${escapeHtml(t("common.actions"))}</th>
               </tr>
             </thead>
-            <tbody id="usersTableBody">${rows}</tbody>
+            <tbody id="usersTableBody">${rows || `<tr><td colspan="4" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`}</tbody>
           </table>
         </div>
       </div>
+      ${renderPager(pagination, "users")}
     </section>
   `;
 }

@@ -1,12 +1,38 @@
-import { dataStore, getUserName, getPricelistItems } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
-import { renderRowActions } from "../components/tableActions.js";
+import { renderErrorState } from "../components/asyncState.js";
+import { getPriceList } from "../../api/services/priceListsService.js";
+import { listProducts } from "../../api/services/productsService.js";
 
-export function renderPricelistDetailPage() {
+export async function renderPricelistDetailPage() {
   const hash = window.location.hash.replace("#", "").trim();
   const pricelistId = hash.split("/")[1] || "";
-  const pricelist = dataStore.priceLists.find((pl) => pl.id === pricelistId);
+
+  if (!pricelistId) {
+    return `
+      <section class="panel panel--flush">
+        <div class="toolbar">
+          <button class="secondary-btn" type="button" data-action="nav-route" data-route="pricelists">${escapeHtml(t("common.list"))}</button>
+        </div>
+        <div class="panel-body">
+          <p>${escapeHtml(t("common.notFound"))}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  let pricelist;
+  let productsById;
+  try {
+    const [pl, productsRes] = await Promise.all([
+      getPriceList(pricelistId),
+      listProducts({ limit: 100 }),
+    ]);
+    pricelist = pl;
+    productsById = new Map((productsRes.items || []).map((p) => [p.id || p._id, p.name]));
+  } catch (err) {
+    return renderErrorState(err, "retry-route");
+  }
 
   if (!pricelist) {
     return `
@@ -21,14 +47,19 @@ export function renderPricelistDetailPage() {
     `;
   }
 
-  const items = getPricelistItems(pricelistId);
+  const items = pricelist.items || [];
   const itemRows = items.length > 0
-    ? items.map((item) => `
+    ? items.map((item, index) => `
         <tr>
-          <td>${escapeHtml(item.product_name)}</td>
+          <td>${escapeHtml(productsById.get(item.productId) || item.productId)}</td>
           <td>${escapeHtml(item.price)}</td>
-          <td>${escapeHtml(new Date(item.created_at).toLocaleDateString())}</td>
-          <td>${renderRowActions("priceItem", item.id)}</td>
+          <td>${escapeHtml(item.currency || "")}</td>
+          <td>
+            <div class="table-actions">
+              <button type="button" class="btn-text btn-text--edit" data-action="open-entity-form" data-entity="priceItem" data-mode="edit" data-price-list-id="${escapeHtml(pricelistId)}" data-item-index="${index}">${escapeHtml(t("common.edit"))}</button>
+              <button type="button" class="btn-text btn-text--danger" data-action="delete-price-item" data-price-list-id="${escapeHtml(pricelistId)}" data-item-index="${index}">${escapeHtml(t("common.delete"))}</button>
+            </div>
+          </td>
         </tr>
       `).join("")
     : `<tr><td colspan="4" class="text-center">${escapeHtml(t("common.noData"))}</td></tr>`;
@@ -46,23 +77,19 @@ export function renderPricelistDetailPage() {
             <tbody>
               <tr>
                 <th>${escapeHtml(t("form.priceList.name"))}</th>
-                <td><div class="modal-field"><input id="fld-name" name="name" type="text" value="${escapeHtml(pricelist.name)}" readonly /></div></td>
+                <td>${escapeHtml(pricelist.name)}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("form.priceList.desc"))}</th>
-                <td><div class="modal-field"><input id="fld-desc" name="desc" type="text" value="${escapeHtml(pricelist.desc)}" readonly /></div></td>
+                <td>${escapeHtml(pricelist.description || "—")}</td>
               </tr>
               <tr>
-                <th>${escapeHtml(t("form.priceList.createdBy"))}</th>
-                <td><div class="modal-field"><input id="fld-created_by" name="created_by" type="text" value="${escapeHtml(getUserName(pricelist.created_by))}" readonly /></div></td>
-              </tr>
-              <tr>
-                <th>${escapeHtml(t("form.priceList.createdAt"))}</th>
-                <td><div class="modal-field"><input id="fld-created_at" name="created_at" type="text" value="${escapeHtml(new Date(pricelist.created_at).toLocaleDateString())}" readonly /></div></td>
+                <th>${escapeHtml(t("form.priceList.customerType"))}</th>
+                <td>${escapeHtml(pricelist.customerType || "—")}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("form.priceList.status"))}</th>
-                <td><div class="modal-field"><input id="fld-status" name="status" type="text" value="${escapeHtml(pricelist.status)}" readonly /></div></td>
+                <td>${escapeHtml(pricelist.status)}</td>
               </tr>
             </tbody>
           </table>
@@ -81,7 +108,7 @@ export function renderPricelistDetailPage() {
               <tr>
                 <th>${escapeHtml(t("pricelists.thProduct"))}</th>
                 <th>${escapeHtml(t("pricelists.thPrice"))}</th>
-                <th>${escapeHtml(t("pricelists.thCreatedAt"))}</th>
+                <th>${escapeHtml(t("form.priceItem.currency"))}</th>
                 <th>${escapeHtml(t("common.actions"))}</th>
               </tr>
             </thead>
