@@ -1,6 +1,7 @@
 import { dataStore, getUserName } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
+import { renderDemoBanner } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
 
 export function renderRegionsPage() {
@@ -19,6 +20,7 @@ export function renderRegionsPage() {
     .join("");
 
   return `
+    ${renderDemoBanner()}
     <section class="panel panel--flush">
       <div class="toolbar toolbar--split">
         <div>

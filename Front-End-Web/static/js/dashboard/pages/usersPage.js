@@ -1,10 +1,10 @@
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
 import { labelUserStatus } from "../../i18n/labels.js";
 import { roleKeyFromBackend } from "../../api/roleMap.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listUsers } from "../../api/services/usersService.js";
 
 function labelBackendRole(role) {
@@ -14,7 +14,8 @@ function labelBackendRole(role) {
 
 export async function renderUsersPage() {
   const page = getListPage("users");
-  const { items, pagination } = await listUsers({ page, limit: 20 });
+  const search = getListSearch("users");
+  const { items, pagination } = await listUsers({ page, limit: 20, search });
 
   const rows = items
     .map((u) => {
@@ -38,7 +39,7 @@ export async function renderUsersPage() {
   return `
     <section class="panel panel--flush">
       <div class="toolbar">
-        <input class="search-input table-filter" type="search" data-table="users" placeholder="${escapeHtml(t("users.searchPh"))}" />
+        ${renderSearchInput("users", t("users.searchPh"), search)}
         <button class="primary-btn toolbar-primary" type="button" data-action="open-entity-form" data-entity="user" data-mode="add">${escapeHtml(t("users.add"))}</button>
       </div>
       <div class="table-shell">

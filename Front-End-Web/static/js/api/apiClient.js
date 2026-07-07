@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./config.js";
-import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearAuthStorage } from "./tokenStorage.js";
+import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, setStoredUser, clearAuthStorage } from "./tokenStorage.js";
 
 let refreshPromise = null;
 
@@ -17,8 +17,10 @@ async function performRefresh() {
     throw json || { message: "Session expired" };
   }
 
+  // Rotated tokens are returned — save BOTH the new access and refresh tokens.
   if (json.data?.accessToken) setAccessToken(json.data.accessToken);
   if (json.data?.refreshToken) setRefreshToken(json.data.refreshToken);
+  if (json.data?.user) setStoredUser(json.data.user);
   return json.data?.accessToken;
 }
 

@@ -33,6 +33,16 @@ function getRecord(entity, id) {
 
 const INVOICE_ITEM_ROW_COUNT = 6;
 
+// Fixed backend enum for a completed visit's outcome.
+const VISIT_OUTCOMES = [
+  "ORDER_PLACED",
+  "PAYMENT_COLLECTED",
+  "FOLLOW_UP_NEEDED",
+  "NO_INTEREST",
+  "CUSTOMER_UNAVAILABLE",
+  "OTHER",
+];
+
 function fieldText(name, label, value, attrs = "") {
   const typeMatch = attrs.match(/type="([^"]+)"/);
   const type = typeMatch ? typeMatch[1] : "text";
@@ -102,7 +112,6 @@ function buildFields(entity, record, mode, extra = {}) {
       fieldText("phone", t("form.customer.phone"), record.phone || ""),
       fieldEmail("email", t("form.customer.email"), record.email || ""),
       fieldText("address", t("form.customer.address"), record.address || ""),
-      fieldSelect("assignedSalesRep", t("form.customer.assignedUser"), record.assignedSalesRep || "", userSelectOptions()),
       fieldSelect("customerType", t("form.customer.type"), record.customerType || "Retail", [
         { value: "Retail", label: t("labels.customerType.retail") },
         { value: "Wholesale", label: t("labels.customerType.wholesale") },
@@ -201,8 +210,11 @@ function buildFields(entity, record, mode, extra = {}) {
   }
   if (entity === "visit") {
     const customerOptions = extra.customerOptions || [];
+    // The contract's create body field is `customer`; handle both a populated object
+    // and a plain id when preselecting on edit.
+    const visitCustomerId = record.customer?.id || record.customer?._id || (typeof record.customer === "string" ? record.customer : "") || record.customerId || "";
     const customerField = customerOptions.length
-      ? fieldSelect("customerId", t("form.visit.customer"), record.customerId || "", customerOptions)
+      ? fieldSelect("customer", t("form.visit.customer"), visitCustomerId, customerOptions)
       : `<p class="modal-hint">${escapeHtml(t("modal.hint.invoiceNoCustomer"))}</p>`;
     return [
       customerField,
@@ -214,7 +226,7 @@ function buildFields(entity, record, mode, extra = {}) {
   }
   if (entity === "visitComplete") {
     return [
-      fieldText("outcome", t("form.visitComplete.outcome"), record.outcome || "", `placeholder="${escapeHtml(t("form.visitComplete.outcomePh"))}"`),
+      fieldSelect("outcome", t("form.visitComplete.outcome"), record.outcome || VISIT_OUTCOMES[0], VISIT_OUTCOMES.map((value) => ({ value, label: t(`labels.visitOutcome.${value}`) }))),
       fieldText("nextAction", t("form.visitComplete.nextAction"), record.nextAction || ""),
       fieldText("nextVisitDate", t("form.visitComplete.nextVisitDate"), record.nextVisitDate ? record.nextVisitDate.split("T")[0] : "", 'type="date"'),
     ].join("");
@@ -406,8 +418,9 @@ export async function handleEntityFormSubmit(form) {
       } else if (entity === "payment") {
         await recordInvoicePayment(recordId, { amount: payload.amount });
       } else if (entity === "visit") {
+        // Contract body field is `customer` (Phase 6 §40) — not customerId.
         const visitPayload = {
-          customerId: payload.customerId,
+          customer: payload.customer,
           visitDate: payload.visitDate,
           purpose: payload.purpose,
           location: payload.location,

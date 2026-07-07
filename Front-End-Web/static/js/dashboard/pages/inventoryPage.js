@@ -1,14 +1,15 @@
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
 import { labelProductStatus } from "../../i18n/labels.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listProducts } from "../../api/services/productsService.js";
 
 export async function renderInventoryPage() {
   const page = getListPage("inventory");
-  const { items, pagination } = await listProducts({ page, limit: 20 });
+  const search = getListSearch("inventory");
+  const { items, pagination } = await listProducts({ page, limit: 20, search });
 
   const rows = items
     .map((row) => {
@@ -30,7 +31,7 @@ export async function renderInventoryPage() {
   return `
     <section class="panel panel--flush">
       <div class="toolbar">
-        <input class="search-input table-filter" type="search" data-table="inventory" placeholder="${escapeHtml(t("inventory.searchPh"))}" />
+        ${renderSearchInput("inventory", t("inventory.searchPh"), search)}
         <button class="primary-btn toolbar-primary" type="button" data-action="open-entity-form" data-entity="inventory" data-mode="add">${escapeHtml(t("inventory.addItem"))}</button>
       </div>
       <div class="table-shell">

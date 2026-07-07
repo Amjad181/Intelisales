@@ -1,37 +1,33 @@
 import { apiGet, apiPost, apiPatch } from "../apiClient.js";
 import { buildQueryString } from "../queryString.js";
+import { getList, getEntity } from "../extractors.js";
 
-export async function listVisits({ page, limit } = {}) {
-  const res = await apiGet(`/visits${buildQueryString({ page, limit })}`);
-  return { items: res.data || [], pagination: res.pagination || null };
+export async function listVisits(params = {}) {
+  const { page, limit, status, outcome, customer, salesRep, dateFrom, dateTo, search, sortBy, sortOrder } = params;
+  const res = await apiGet(
+    `/visits${buildQueryString({ page, limit, status, outcome, customer, salesRep, dateFrom, dateTo, search, sortBy, sortOrder })}`
+  );
+  return getList(res);
 }
 
 export async function getVisit(id) {
-  const res = await apiGet(`/visits/${id}`);
-  return res.data;
+  return getEntity(await apiGet(`/visits/${id}`), "visit");
 }
 
 export async function createVisit(payload) {
-  const res = await apiPost("/visits", payload);
-  return res.data;
+  return getEntity(await apiPost("/visits", payload), "visit");
 }
 
 export async function updateVisit(id, payload) {
-  const res = await apiPatch(`/visits/${id}`, payload);
-  return res.data;
+  return getEntity(await apiPatch(`/visits/${id}`, payload), "visit");
 }
 
-export async function confirmVisit(id) {
-  const res = await apiPatch(`/visits/${id}/confirm`, {});
-  return res.data;
-}
-
+// Visit lifecycle: there is NO confirm route. A planned visit may be updated,
+// completed (with outcome), or cancelled (with optional notes).
 export async function completeVisit(id, payload) {
-  const res = await apiPatch(`/visits/${id}/complete`, payload);
-  return res.data;
+  return getEntity(await apiPatch(`/visits/${id}/complete`, payload), "visit");
 }
 
-export async function cancelVisit(id) {
-  const res = await apiPatch(`/visits/${id}/cancel`, {});
-  return res.data;
+export async function cancelVisit(id, payload = {}) {
+  return getEntity(await apiPatch(`/visits/${id}/cancel`, payload), "visit");
 }

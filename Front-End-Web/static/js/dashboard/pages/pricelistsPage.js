@@ -1,13 +1,14 @@
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listPriceLists } from "../../api/services/priceListsService.js";
 
 export async function renderPricelistsPage() {
   const page = getListPage("priceLists");
-  const { items, pagination } = await listPriceLists({ page, limit: 20 });
+  const search = getListSearch("priceLists");
+  const { items, pagination } = await listPriceLists({ page, limit: 20, search });
 
   const listsRows = items
     .map((pl) => {
@@ -32,7 +33,7 @@ export async function renderPricelistsPage() {
           <p class="toolbar-desc">${escapeHtml(t("pricelists.sectionListsDesc"))}</p>
         </div>
         <div class="toolbar-filters toolbar-filters--inline">
-          <input class="search-input table-filter" type="search" data-table="priceLists" placeholder="${escapeHtml(t("pricelists.searchListsPh"))}" />
+          ${renderSearchInput("priceLists", t("pricelists.searchListsPh"), search)}
           <button class="primary-btn" type="button" data-action="open-entity-form" data-entity="priceList" data-mode="add">${escapeHtml(t("pricelists.addList"))}</button>
         </div>
       </div>

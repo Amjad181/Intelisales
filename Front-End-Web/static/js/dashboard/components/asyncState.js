@@ -57,6 +57,24 @@ export function renderModalErrorOverlay(err) {
   `;
 }
 
+// Banner marking a page as a local demo with no Module 12 backend endpoint,
+// so users don't mistake its mock content for live backend data.
+export function renderDemoBanner() {
+  return `
+    <div class="demo-banner" role="note">
+      <strong>${escapeHtml(t("common.demoOnlyTitle"))}</strong>
+      <span>${escapeHtml(t("common.demoOnlyBody"))}</span>
+    </div>
+  `;
+}
+
+// Server-side search box. `entityKey` matches the appState pagination/search key.
+// Bound value is echoed back so a re-render preserves the typed term; `data-search`
+// (not `table-filter`) routes it to the debounced backend search in main.js.
+export function renderSearchInput(entityKey, placeholder, value) {
+  return `<input class="search-input" type="search" id="search-${escapeHtml(entityKey)}" data-search="${escapeHtml(entityKey)}" value="${escapeHtml(value || "")}" placeholder="${escapeHtml(placeholder)}" autocomplete="off" />`;
+}
+
 export function renderPager(pagination, entityKey) {
   if (!pagination || !pagination.pages || pagination.pages <= 1) return "";
   const page = pagination.page || 1;

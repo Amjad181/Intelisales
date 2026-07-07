@@ -1,12 +1,14 @@
 # Integration Notes — Web Frontend
 
-Status of backend integration against the Module 12 API contract (`/api/v1`). This file tracks what is real vs. mock so nobody confuses the two.
+Status of backend integration against the tested Module 12 API contract (`/api/v1`). This file tracks what is real vs. local-demo so nobody confuses the two.
+
+> **July 2026 alignment pass.** The frontend was aligned to the immutable, tested backend contract (183 Jest / 135 Postman passing). No backend routes were invented or changed. See "Changed in this pass" below.
 
 ## Base URL
 
 Default: `http://localhost:5000/api/v1` (see `static/js/api/config.js`).
 
-To point at a different backend (another machine, a different port), set `window.INTELLISALES_API_BASE_URL` before `main.js`/`loginPage.js` load, e.g. add before the `<script type="module">` tag in `index.html`/`dashboard.html`:
+To point at a different backend (another machine, a different port), set `window.INTELLISALES_API_BASE_URL` **before** `main.js`/`loginPage.js` load, e.g. add before the `<script type="module">` tag in `index.html`/`dashboard.html`:
 
 ```html
 <script>window.INTELLISALES_API_BASE_URL = "http://192.168.1.20:5000/api/v1";</script>
@@ -22,41 +24,74 @@ rep@intellisales.com / Password123!
 accountant@intellisales.com / Password123!
 ```
 
+## Response extraction contract (`static/js/api/extractors.js`)
+
+Every service now parses the success envelope through shared helpers so a contract mismatch fails loudly instead of silently rendering `undefined`/em dashes:
+
+| Helper | Returns |
+| --- | --- |
+| `getDataArray(res)` | `res.data` (list rows are directly the array) |
+| `getPagination(res)` | `res.pagination` |
+| `getCount(res)` | `res.count` |
+| `getList(res)` | `{ items, pagination, count }` |
+| `getEntity(res, key)` | `res.data[key]` — throws a `ContractError` if the key is absent |
+
+Exact per-operation extraction (matches the contract map):
+
+- Login → `data.user` / `data.accessToken` / `data.refreshToken`
+- `GET /auth/me` → `data.user`
+- List endpoints → `data` (array) + `pagination` + `count`
+- Customer single/action → `data.customer`; Product → `data.product`; Price list single/action/customer-type → `data.priceList`; User → `data.user`; Invoice → `data.invoice`; Visit → `data.visit`
+- Dashboard → `data.summary` / `data.salesReps` / `data.activity`
+- Recommendations → `data` (`recommendations` + `customer`/`strategy`/`meta`)
+
 ## Wired to the real backend now
 
 - **Auth**: `static/js/api/authService.js` + `apiClient.js` + `tokenStorage.js`.
-  - Login: `POST /auth/login` (`static/js/auth/loginPage.js`). Role selector removed from the login form — the backend returns `user.role`, mapped to the dashboard's internal role key via `static/js/api/roleMap.js`.
-  - Session guard: `main.js` requires a stored access token before rendering the dashboard, and calls `GET /auth/me` once after first paint to validate the session in the background.
-  - Token refresh: `apiClient.js` retries a `401` once via `POST /auth/refresh-token`, then logs out and redirects to login if that fails too.
+  - Login: `POST /auth/login`. No role selector — the backend's `user.role` is mapped to the dashboard's internal role key via `roleMap.js`.
+  - Session guard: `main.js` requires a stored access token, then calls `GET /auth/me` after first paint (reads `data.user`, updates the cached user).
+  - Token refresh: `apiClient.js` retries a `401` once via `POST /auth/refresh-token`, saving **both** rotated tokens (and the user if returned); on failure it clears tokens and returns to `index.html`.
   - Logout: `POST /auth/logout` (best-effort) then clears local tokens.
-- **Customers**: `static/js/api/services/customersService.js` — `customersPage.js` lists via `GET /customers` (paginated), add/edit/delete go through `POST/PATCH/DELETE /customers/:id`. Fields: `name, contactName, phone, email, address, notes, assignedSalesRep, customerType (Retail/Wholesale/KeyAccount), paymentType (Cash/Credit), status`.
-- **Products**: `static/js/api/services/productsService.js` — `inventoryPage.js` (nav label "Product", internal entity key stays `inventory`) lists via `GET /products`, CRUD via `POST/PATCH/DELETE /products/:id`. Fields: `name, productCode, barcode, category, brand, description, unit (PIECE/BOX/KG/LITER/METER/PACK), basePrice, currency, taxRate, status`.
-- **Price Lists**: `static/js/api/services/priceListsService.js` — `pricelistsPage.js`/`pricelistDetailPage.js` list/CRUD via `GET/POST/PATCH/DELETE /price-lists/:id`. The backend has **no separate line-item endpoint** — `items[]` (`productId, price, currency`) live inline on the price list resource, so adding/editing/removing one item is a read-modify-write against the parent list's `items` array (see `addPriceListItem`/`updatePriceListItem`/`removePriceListItem`). Item identity in the UI is its **array index within the currently-fetched list**, not a stable id — the contract doesn't document one.
-- **Users**: `static/js/api/services/usersService.js` — `usersPage.js` lists via `GET /users` (COMPANY_ADMIN only route), CRUD via `POST/PATCH/DELETE /users`, password reset via `PATCH /users/:id/password`. Role `<select>` submits real backend enum values (`COMPANY_ADMIN`, `SALES_MANAGER`, etc.) directly.
-- **Invoices**: `static/js/api/services/invoicesService.js` — `invoicesPage.js`/`invoiceDetailPage.js` list/CRUD via `GET/POST/PATCH/DELETE /invoices/:id`, plus `confirm`/`archive`/`mark-sent`/`payment` action endpoints and `GET /invoices/:id/pdf` (opened via blob URL in a new tab). The create/edit form is a real line-item builder (customer picker, due date, discount type/value, notes, product+quantity rows) — the backend calculates `subtotal/discountAmount/taxAmount/totalAmount` server-side, the payload never sends amounts. **Simplification**: the item builder has **6 fixed rows** (matching the same static-optional-row pattern already used by the Visits weekly-schedule builder) rather than a dynamic add/remove list, so an invoice can have at most 6 line items through this UI right now. Record Payment reuses the entity-modal plumbing as a pseudo-entity (`payment`) rather than a bespoke dialog.
-- **Dashboard**: `static/js/api/services/dashboardService.js` — `overviewPage.js` fetches `GET /dashboard/summary`, `/dashboard/sales-reps`, `/dashboard/recent-activity?limit=10` in parallel. **Simplification**: the PDF only documents the summary's top-level groups (`customers, products, invoices, visits, recent`), not exact field names inside each, so the KPI tiles read every field defensively (`summary?.customers?.total ?? "—"`) — verify the actual field names against a real response and tighten this once confirmed. `mockDataService.js` (the old mock KPI source) was deleted, it had no other callers.
-- **Recommendations**: `static/js/api/services/recommendationsService.js` — new `recommendationsPage.js` (nav entry, sales-facing roles only, same as Visits). Not a full customer-detail page with invoice/balance/visit tabs — just a customer picker + "Get Recommendations" button that fetches `GET /recommendations/customers/:customerId/products?limit=5&includeHistory=true` on demand and renders cards from `data.recommendations`.
-- **Visits**: `static/js/api/services/visitsService.js` — `visitsPage.js`/`visitDetailPage.js` list/CRUD via `GET/POST/PATCH /visits/:id`, plus `confirm`/`complete`/`cancel` action endpoints (`PATCH /visits/:id/confirm|complete|cancel`). The **old weekly-schedule builder** (week → day-of-week rows → region + trade center + estimated time) and the never-wired daily-visits page were **removed entirely** and replaced with the real per-customer model: create/edit form is customer picker (from `listCustomers`) + `visitDate, purpose, location, notes`. Complete reuses the entity-modal plumbing as a pseudo-entity (`visitComplete`) with `outcome, nextAction, nextVisitDate`, exactly like Record Payment for invoices. **Simplifications**: `salesRep` is **backend-assigned to the logged-in user** (no rep picker — the `/users` list is COMPANY_ADMIN-only), and `purpose`/`outcome` are **free-text inputs** because the contract doesn't document their enum values (tighten to `<select>` once known).
+- **Customers**: `customersService.js` — list/CRUD via `GET/POST/PATCH/DELETE /customers/:id`. Assignment is a **dedicated action** (`PATCH /customers/:id/assign`, `assignedSalesRep`); a normal update no longer includes `assignedSalesRep`, so that field was removed from the add/edit form. The list shows the backend snapshot (`assignedSalesRepSnapshot?.name`) when present.
+- **Products**: `productsService.js` — list/CRUD via `GET/POST/PATCH/DELETE /products/:id` (DELETE = soft deactivate). Product **selectors** (invoice builder, price-list items, detail name map) use the dedicated `GET /products/price-list` route.
+- **Price Lists**: `priceListsService.js` — list/CRUD via `/price-lists/:id`. Items live inline on the resource (`items[].productId/price/currency`); add/edit/remove is a read-modify-write against the parent's `items`. Customer-type lookup (`getPriceListByCustomerType`) returns a **single** `data.priceList`, not an array.
+- **Users**: `usersService.js` — `GET /users` (COMPANY_ADMIN only), CRUD via `/users`, password reset via `PATCH /users/:id/password`. Role `<select>` submits real backend enum values.
+- **Invoices**: `invoicesService.js` — list/CRUD via `GET/POST/PATCH /invoices/:id` (**no DELETE — archived** via `PATCH /invoices/:id/archive`), plus `confirm`/`mark-sent`/`payment` actions and `GET /invoices/:id/pdf` (blob → new tab). Create/edit sends only `customerId`, `items[{productId, quantity}]`, `discountType/value`, `dueDate`, `source`, `notes` — **never** totals or item prices; the backend calculates them. **Role-gated UI**: Mark-Sent and Record-Payment buttons are hidden for roles that can't use them (admin/manager/accountant only) and guarded in the handlers; backend 403 still enforced. Item builder is 6 fixed rows (a **frontend-only** cap, not a backend limit).
+- **Dashboard**: `dashboardService.js` — `overviewPage.js` fetches `GET /dashboard/summary` first (primary), then `/dashboard/sales-reps` and `/dashboard/recent-activity?limit=10` via `Promise.allSettled` so one failure doesn't blank the page. Sales-reps performance is **only requested for admin/manager/supervisor** (it 403s for others). KPI tiles read the nested summary groups (`summary.customers.total`, etc.).
+- **Recommendations**: `recommendationsService.js` — customer picker + on-demand `GET /recommendations/customers/:id/products`, renders `data.recommendations`.
+- **Visits**: `visitsService.js` — list/CRUD via `GET/POST/PATCH /visits/:id`, plus **`complete`** (with outcome) and **`cancel`** (with optional notes) actions. **There is no confirm route** — `confirmVisit` and its UI were removed entirely. The create/update body uses the contract's **`customer`** field (not `customerId`); rendering tolerates both a populated `customer` object and the snapshot. The Complete form's **outcome is a `<select>`** of the fixed backend enum (`ORDER_PLACED`, `PAYMENT_COLLECTED`, `FOLLOW_UP_NEEDED`, `NO_INTEREST`, `CUSTOMER_UNAVAILABLE`, `OTHER`). Cancel prompts for optional notes.
 
-All list pages are **async** (`renderRoute()` in `main.js` shows a loading state, then the real page or a friendly error/403 panel via `static/js/dashboard/components/asyncState.js`) with real Prev/Next pagination wired to `response.pagination` (except Recommendations, which is on-demand rather than a paginated list). Search stays **client-side** over the currently-loaded page (existing `.table-filter` wiring) — the contract doesn't confirm backend search query params, so this avoids guessing. Add/edit modals show a loading state while pre-fetching the record (and dropdown options like products/customers), and surface `err.message` (+ field-level `errors[]` if present) inline on failure instead of closing.
+## Server-side search, filters, pagination
 
-## Known, accepted limitation
+- **Search is now server-side** for Customers, Products, Inventory, Price Lists, Users, Invoices, and Visits. Typing calls `GET /...?search=` with a ~350 ms debounce, starts after 2 characters (empty resets), resets to page 1, ignores stale responses, and preserves the box's focus/caret across the re-render (`renderSearchInput` in `asyncState.js`; debounce/handler in `main.js`).
+- **Pagination** renders from `response.pagination` (Prev/Next disabled at bounds); the active search term is preserved across pages.
+- Every list service **accepts the full documented filter set** (e.g. customers: `status/customerType/paymentType/assignedSalesRep/city/sortBy/sortOrder`; invoices: `invoiceStatus/paymentStatus/customerId/createdBy/dateFrom/dateTo/...`; visits: `status/outcome/customer/salesRep/dateFrom/dateTo/...`) via `buildQueryString`, which drops empty values. Only the **search** box is wired in the UI so far — see "Deferred".
+- The two local-demo pages (Sales, Regions) keep their old **client-side** `.table-filter` row hiding; they are not backend-connected.
 
-`dataStore.js` still keeps a mock `users` array (plus `getUserName`, `userSelectOptions`) purely so the **not-yet-migrated** pages (Sales, Regions — and their "created by"/"assigned" dropdowns) keep working. A real backend user won't show up in those dropdowns until those pages are migrated too. `dataStore.customers`, `.inventoryAlerts`, `.invoices`, `.invoiceItems`, `.priceLists`, `.priceListItems`, `.visitSchedules`, `.visitLines`, `.dailyVisits` and all their mutate functions (plus the now-dead `getRegionName`/`regionSelectOptions` helpers) were fully deleted once Customers/Products/Price Lists/Invoices/Visits moved to the real backend — confirmed nothing else referenced them. `nextInvoiceNumber()` was renamed to `nextSaleInvoiceNumber()` and rescoped to the (still-mock, unrelated) Sales entity, since it used to read the now-deleted `dataStore.invoices`.
+## Local Demo Only (no Module 12 backend endpoint)
 
-## Still mock data (`static/js/dashboard/state/dataStore.js`)
+`Sales`, `Regions`, and `Reports` have no backend contract and now show a visible **"Local demo only"** banner (`renderDemoBanner`) so their sample data is never mistaken for live data. `dataStore.js` still holds the mock arrays these pages (and the Regions "created by" dropdown) rely on. The overview "Top Sales Reps" panel is **not** mock — it renders real `data.salesReps`.
 
-- Sales, Top Reps — no backend equivalent, kept as local-only tools.
-- Regions, Reports — **no corresponding backend endpoint at all** in the Module 12 contract. Decide whether to drop them or keep them as local-only tools.
+## Changed in this pass (summary)
 
-## TODO (next sessions)
+- Added `extractors.js`; every service returns the exact nested entity / list shape.
+- Fixed `refreshCurrentUser` → `data.user`; refresh now saves both rotated tokens + user.
+- Removed the invalid `PATCH /visits/:id/confirm` call and all its UI; `cancelVisit` accepts optional notes.
+- Visit outcome is now the fixed enum `<select>`.
+- Dashboard reads `summary/salesReps/activity` and is resilient + role-gated.
+- Server-side debounced search across all backend list pages.
+- Product selectors use `/products/price-list`; price-list customer-type lookup returns a single entity.
+- Customer `assignedSalesRep` removed from the normal update form.
+- Role-gated invoice mark-sent/payment UI.
+- Local-demo banners on Sales/Regions/Reports.
 
-1. Decide fate of Regions / Reports / Sales-TopReps pages (no backend equivalent).
-2. Verify the actual `dashboard/summary` response shape against a real backend and tighten `overviewPage.js`'s defensive field reads.
-3. Confirm the Visits contract details against a real backend: the create/complete payload shapes, the `purpose`/`outcome` enum values (currently free-text), and the list/detail snapshot field names (`customerSnapshot?.name`, `salesRepSnapshot?.name`) — tighten once verified.
-4. Consider a real dynamic add/remove line-item builder for invoices if the 6-row cap becomes limiting.
-5. Once Sales is migrated (if ever), retire the mock `dataStore.users` cross-reference array.
+## Deferred / open verification items
 
-## Not tested end-to-end
+Test each against a running backend and tighten:
 
-No backend was reachable while writing this integration, so **none** of the above (auth, customers, products, price lists, users, invoices, dashboard, recommendations, visits) has been exercised against a real server — all of it was written strictly to the documented contract. Test it against a running backend before relying on it, paying particular attention to: the invoice line-item payload shape, the `payment`/`confirm`/`mark-sent` endpoints' exact request/response bodies, the dashboard summary field names, and the visits `confirm`/`complete`/`cancel` request/response bodies plus the `purpose`/`outcome` enum values.
+1. **Not tested end-to-end** — no backend was reachable while writing this; everything was written strictly to the documented contract. Exercise all five seed roles before relying on it.
+2. **Dashboard summary field names** — the KPI reads (`summary.customers.total`, etc.) follow the field map but weren't verified against a real response.
+3. **Filter UIs** — services accept all documented filters, but only the search box is wired. Status/type/date-range filter controls are deferred (no existing controls to preserve; adding them is a follow-up).
+4. **Customer balance UI** — `getCustomerBalance(id)` (`GET /customers/:id/balance`) exists in `customersService.js` and nothing recalculates balance client-side, but no screen displays it yet; the response payload's exact shape is undocumented, so the UI is deferred until verified.
+6. **Visit `purpose`** — still a free-text input (the contract doesn't document a purpose enum); tighten to a `<select>` if/when one is confirmed.
+7. Retire the mock `dataStore.users`/Sales/Regions cross-references once/if those pages are migrated.

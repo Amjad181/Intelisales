@@ -1,10 +1,12 @@
 import { t } from "../../i18n/i18n.js";
 import { escapeHtml } from "../utils/html.js";
+import { renderDemoBanner } from "../components/asyncState.js";
 
 const REPORT_TYPES = ["daily", "monthly", "aging", "repPerf"];
 
 function renderReportOverview() {
   return `
+    ${renderDemoBanner()}
     <section class="panel">
       <h3>${escapeHtml(t("reports.title"))}</h3>
       <p>${escapeHtml(t("reports.intro"))}</p>

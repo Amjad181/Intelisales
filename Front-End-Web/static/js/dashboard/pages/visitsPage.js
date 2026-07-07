@@ -1,12 +1,13 @@
 import { escapeHtml } from "../utils/html.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listVisits } from "../../api/services/visitsService.js";
 
 export async function renderVisitsPage() {
   const page = getListPage("visits");
-  const { items, pagination } = await listVisits({ page, limit: 20 });
+  const search = getListSearch("visits");
+  const { items, pagination } = await listVisits({ page, limit: 20, search });
 
   const rows = items
     .map((row) => {
@@ -15,7 +16,7 @@ export async function renderVisitsPage() {
         <tr>
           <td class="td-strong">
             <button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="visit/${escapeHtml(id)}">
-              ${escapeHtml(row.customerSnapshot?.name || row.customerId || "—")}
+              ${escapeHtml(row.customerSnapshot?.name || row.customer?.name || "—")}
             </button>
           </td>
           <td>${escapeHtml(row.visitDate ? new Date(row.visitDate).toLocaleDateString() : "—")}</td>
@@ -41,7 +42,7 @@ export async function renderVisitsPage() {
           <h3 class="toolbar-title">${escapeHtml(t("titles.visits"))}</h3>
         </div>
         <div class="toolbar-filters toolbar-filters--inline">
-          <input class="search-input table-filter" type="search" data-table="visits" placeholder="${escapeHtml(t("visits.searchPh"))}" />
+          ${renderSearchInput("visits", t("visits.searchPh"), search)}
           <button class="primary-btn" type="button" data-action="open-entity-form" data-entity="visit" data-mode="add">${escapeHtml(t("visits.add"))}</button>
         </div>
       </div>

@@ -1,493 +1,191 @@
-# Intellsales Test Cases
+# IntelliSales Web — Test Cases
 
-This document defines test cases for the current `sales_management_web` application.
-It covers the main dashboards, forms, workflows, localization, and the latest pricelist features.
+Manual test cases for the web frontend **integrated against the tested Module 12 backend** (`/api/v1`). Updated in the July 2026 alignment pass to match the real contract (see `INTEGRATION_NOTES.md`).
 
 ## Test Setup
 
-- Browser: Chrome / Edge / Firefox
-- User role: Administrator (or any role with access to the dashboard)
-- Start page: `index.html`
-- Verify initial data is loaded from `static/js/dashboard/state/dataStore.js`
+- Browsers: Chrome / Edge / Firefox.
+- **A running Module 12 backend is required** at `http://localhost:5000/api/v1` (or override via `window.INTELLISALES_API_BASE_URL`).
+- Seed accounts (all `Password123!`): `admin@`, `manager@`, `supervisor@`, `rep@`, `accountant@` `intellisales.com`.
+- Start page: `index.html`.
+- Keep DevTools open: the **Console must stay clean** and the **Network tab** should show every data call hitting `/api/v1` through the central client.
 
 ---
 
-## 1. Authentication / Access
+## 1. Authentication, Session & Roles
 
-### TC-001: Login page loads
-- Steps:
-  1. Open the application.
-  2. Verify login page displays email and password fields.
-- Expected:
-  - Login fields are visible.
-  - Login button is visible.
+### TC-001: Login (real backend)
+- Enter a seed email/password → submit.
+- Expected: `POST /auth/login`; on success redirect to the dashboard; access + refresh tokens stored. No role selector is shown.
 
-### TC-002: Login redirects to dashboard
-- Steps:
-  1. Enter valid credentials if required.
-  2. Submit login.
-- Expected:
-  - User is redirected to the dashboard.
-  - Sidebar and topbar are visible.
+### TC-002: Invalid credentials surface the backend message
+- Submit a wrong password.
+- Expected: the error banner shows the backend `message`; no redirect.
 
----
+### TC-003: `/auth/me` validates the session
+- After login, watch the Network tab.
+- Expected: one `GET /auth/me` after first paint; the cached user is read from `data.user` (no console error).
 
-## 2. Global Navigation
+### TC-004: Token refresh on 401
+- Let the access token expire (or simulate a 401), then trigger any data call.
+- Expected: one `POST /auth/refresh-token`; both rotated tokens saved; original request retried once.
 
-### TC-003: Sidebar routes open correct views
-- Steps:
-  1. Click each available sidebar route.
-- Expected:
-  - `Overview` loads overview panel.
-  - `Sales` loads sales page.
-  - `Customers` loads customers page.
-  - `Invoices` loads invoices page.
-  - `Inventory` loads inventory page.
-  - `Pricelists` loads pricelist section.
-  - `Regions` loads regions page.
-  - `Visits` loads visit schedule.
-  - `Daily Visits` loads daily visits page.
-  - `Reports` loads reports page.
-  - `Users` loads user management page.
+### TC-005: Invalid refresh returns to login
+- Corrupt/clear the refresh token, then trigger a 401.
+- Expected: tokens cleared, redirect to `index.html`.
 
-### TC-004: Hash-based routing works
-- Steps:
-  1. Manually set the location hash to `#pricelist/pl-1`.
-  2. Reload the page.
-- Expected:
-  - The correct route is displayed and the page renders.
+### TC-006: Role-specific navigation (all five roles)
+- Log in as each seed role.
+- Expected: sidebar shows only that role's allowed routes; no unauthorized nav appears. Every role lands on a valid Overview.
+
+### TC-007: Role-gated invoice actions
+- Open an invoice detail as **sales rep**.
+- Expected: **Mark Sent** and **Record Payment** buttons are hidden. As **admin/manager/accountant** they are visible. Backend 403 is still handled gracefully if forced.
+
+### TC-008: Logout
+- Click logout.
+- Expected: `POST /auth/logout` (best-effort) then local state cleared and redirect to login, regardless of network outcome.
 
 ---
 
-## 3. Overview Page
+## 2. Lists, Server-Side Search & Pagination
 
-### TC-005: Summary cards display
-- Steps:
-  1. Open `Overview`.
-- Expected:
-  - Overview cards and quick actions are present.
+### TC-009: Customer search hits the backend
+- Type a partial customer name.
+- Expected: `GET /customers?search=...` fires (~350 ms debounce, after 2 chars); table shows only backend-authorized matches — **not** a client filter of the current page. Search box keeps focus.
 
-### TC-006: Quick action buttons open forms
-- Steps:
-  1. Click any quick action button.
-- Expected:
-  - The correct modal appears.
+### TC-010: Invoice search by number and customer
+- Search an invoice number, then a customer name.
+- Expected: `GET /invoices?search=...` returns matches across the whole dataset, not just the loaded page.
 
----
+### TC-011: Pagination preserves filters
+- With a search active, click Next/Prev.
+- Expected: page changes via `response.pagination`; Prev/Next disable at bounds; the search term persists.
 
-## 4. Customers
-
-### TC-007: Add customer
-- Steps:
-  1. Open `Customers`.
-  2. Click `Add customer`.
-  3. Fill required fields.
-  4. Submit.
-- Expected:
-  - New customer appears in customers table.
-
-### TC-008: Edit customer
-- Steps:
-  1. Open `Customers`.
-  2. Click edit on an existing customer.
-  3. Change a field.
-  4. Submit.
-- Expected:
-  - Updated data appears in the table.
-
-### TC-009: Delete customer
-- Steps:
-  1. Open `Customers`.
-  2. Click delete on a row.
-  3. Confirm.
-- Expected:
-  - The customer is removed.
+### TC-012: Empty search resets
+- Clear the search box.
+- Expected: list reloads unfiltered, page resets to 1.
 
 ---
 
-## 5. Sales
+## 3. Customers / Products / Price Lists / Users
 
-### TC-010: Add sale
-- Steps:
-  1. Open `Sales`.
-  2. Click `New sale`.
-  3. Enter customer, amount, payment status.
-  4. Submit.
-- Expected:
-  - Sale appears in the sales table.
+### TC-013: Create / edit customer
+- Add then edit a customer.
+- Expected: `POST` / `PATCH /customers/:id`; response `data.customer` renders; validation errors keep the modal open with field-level messages. The form has **no** assigned-sales-rep field.
 
-### TC-011: Edit sale
-- Steps:
-  1. Click edit for a sale.
-  2. Update amount or status.
-  3. Submit.
-- Expected:
-  - Sale row updates.
+### TC-014: Deactivate customer & product
+- Delete a customer; archive/delete a product.
+- Expected: `DELETE /customers/:id`; product `DELETE` performs a soft deactivate (status reflects it on reload).
 
-### TC-012: Delete sale
-- Steps:
-  1. Click delete for a sale.
-  2. Confirm.
-- Expected:
-  - Sale is removed.
+### TC-015: Product selector uses the price-list route
+- Open the invoice or price-item modal.
+- Expected: product options load via `GET /products/price-list`.
+
+### TC-016: Price list CRUD + inline items
+- Create a price list; add/edit/remove an item.
+- Expected: item changes are a read-modify-write on the parent `items[]`; archive keeps the record (status `Archived`), never deletes.
+
+### TC-017: Users (admin only)
+- As admin, create/edit a user and reset a password.
+- Expected: `GET/POST/PATCH /users`; password via `PATCH /users/:id/password`; role select submits backend enum values. Non-admins can't reach the page.
 
 ---
 
-## 6. Invoices
+## 4. Invoices, Payments & PDF
 
-### TC-013: New invoice creation
-- Steps:
-  1. Open `Invoices`.
-  2. Click `New invoice`.
-  3. Fill invoice fields.
-  4. Submit.
-- Expected:
-  - New invoice appears in invoices table.
+### TC-018: Create draft (no totals sent)
+- New invoice: pick customer, due date, discount, line items (product + qty).
+- Expected: payload contains `customerId`, `items[{productId, quantity}]`, `discountType/value`, `dueDate`, `source`, `notes` — **no** amounts. Backend-calculated totals appear on the detail page.
 
-### TC-014: View invoice detail
-- Steps:
-  1. Open an invoice.
-- Expected:
-  - Invoice detail page loads.
-  - Invoice fields are shown.
+### TC-019: Full lifecycle
+- Draft → Edit → Confirm → open PDF → Mark Sent → partial Payment → full Payment.
+- Expected: `/confirm`, `/mark-sent`, `/payment` actions succeed; `paidAmount` is cumulative; remaining updates. **No DELETE** is ever called.
 
-### TC-015: Edit invoice
-- Steps:
-  1. Click `Edit` on invoice detail.
-  2. Change payment status or totals.
-  3. Submit.
-- Expected:
-  - Invoice updates correctly.
+### TC-020: Archive (not delete)
+- Archive an invoice.
+- Expected: `PATCH /invoices/:id/archive`; status becomes `Archived`; the invoice is not removed.
 
-### TC-016: Archive invoice
-- Steps:
-  1. Click archive in invoice row actions.
-  2. Confirm.
-- Expected:
-  - Invoice status becomes `Archived`.
+### TC-021: PDF binary + JSON error
+- Open the PDF for a valid invoice, then for one that errors.
+- Expected: valid → blob opens in a new tab; error → the JSON `message` is shown, not a broken tab.
 
 ---
 
-## 7. Inventory
+## 5. Visits, Dashboard & Recommendations
 
-### TC-017: Add product
-- Steps:
-  1. Open `Inventory`.
-  2. Click `Add product`.
-  3. Fill required fields.
-  4. Submit.
-- Expected:
-  - Product appears in inventory list.
+### TC-022: Visit create / edit
+- Create then edit a visit (customer, date, purpose, location, notes).
+- Expected: `POST` / `PATCH /visits/:id`; `data.visit` renders.
 
-### TC-018: Edit product
-- Steps:
-  1. Click edit on a product.
-  2. Change name, unit, or status.
-  3. Submit.
-- Expected:
-  - Product row updates.
+### TC-023: Visit lifecycle — no confirm route
+- On a visit detail, verify the action buttons.
+- Expected: only **Edit**, **Complete**, **Cancel** — there is **no Confirm** button and **no** request to `/visits/:id/confirm` anywhere.
 
-### TC-019: Archive product
-- Steps:
-  1. Click archive on a product row.
-  2. Confirm.
-- Expected:
-  - Product status becomes `Archived`.
+### TC-024: Complete with outcome enum
+- Complete a visit.
+- Expected: Outcome is a `<select>` of `ORDER_PLACED / PAYMENT_COLLECTED / FOLLOW_UP_NEEDED / NO_INTEREST / CUSTOMER_UNAVAILABLE / OTHER`; `PATCH /visits/:id/complete` sends the chosen value.
 
----
+### TC-025: Cancel with optional notes
+- Cancel a visit; leave the notes prompt blank once, fill it once.
+- Expected: `PATCH /visits/:id/cancel`; body includes `notes` only when provided.
 
-## 8. Pricelists
+### TC-026: Dashboard shows real values
+- Open Overview as admin.
+- Expected: KPI cards show real numbers from `data.summary` (no em dashes from wrong nesting); Top Reps from `data.salesReps`; Recent Activity from `data.activity`.
 
-### TC-020: View pricelist list
-- Steps:
-  1. Open `Pricelists`.
-- Expected:
-  - All pricelists display with counts.
+### TC-027: Dashboard resilience & role gating
+- Open Overview as **sales rep** / **accountant**.
+- Expected: sales-reps performance is **not requested** (no 403 blanking the page); the rest of the dashboard still renders.
 
-### TC-021: Add pricelist
-- Steps:
-  1. Click `Add pricelist`.
-  2. Fill name, description, status, created by.
-  3. Submit.
-- Expected:
-  - New pricelist appears in list.
-
-### TC-022: Edit pricelist
-- Steps:
-  1. Click edit on a pricelist.
-  2. Change name or status.
-  3. Submit.
-- Expected:
-  - Pricelist updates.
-
-### TC-023: Archive pricelist
-- Steps:
-  1. Click archive on a pricelist row.
-  2. Confirm.
-- Expected:
-  - Pricelist status becomes `Archived`.
-  - Pricelist is not deleted.
-
-### TC-024: Navigate to pricelist detail
-- Steps:
-  1. Click a pricelist name.
-- Expected:
-  - Pricelist detail view loads.
-  - The page shows `Products by pricelist`.
+### TC-028: Recommendations
+- As a sales-facing role, pick an assigned customer → Get Recommendations.
+- Expected: `GET /recommendations/customers/:id/products`; cards from `data.recommendations`; empty result shows a "no data" message (no fabricated items).
 
 ---
 
-## 9. Pricelist Detail / Product Prices
+## 6. Local-Demo & Error Handling
 
-### TC-025: Add product to pricelist from detail page
-- Steps:
-  1. Open a pricelist detail page.
-  2. Click `Add product` in the `Products by pricelist` section.
-  3. Verify modal opens with the current pricelist preselected.
-  4. Enter product name and price.
-  5. Submit.
-- Expected:
-  - New price entry appears in the product table.
+### TC-029: Local-demo banners
+- Open Sales, Regions, Reports.
+- Expected: each shows a visible **"Local demo only"** banner; no backend calls for these pages.
 
-### TC-026: Edit priced product
-- Steps:
-  1. Click edit action on a priced product row.
-  2. Change the product name or price.
-  3. Submit.
-- Expected:
-  - Row updates with edited values.
+### TC-030: No mock fallback on API failure
+- Stop the backend, then open a backend-connected list.
+- Expected: a clear error/retry panel — **never** silent mock data.
 
-### TC-027: Delete priced product
-- Steps:
-  1. Click delete action on a priced product row.
-  2. Confirm deletion.
-- Expected:
-  - The price line is removed from the list.
+### TC-031: Network conditions matrix
+- Exercise: backend offline, expired access token, invalid refresh token, validation `400`, forbidden `403`, missing `404`, PDF error JSON.
+- Expected: each shows an appropriate message/state; console stays clean.
 
-### TC-028: Add product button label
-- Steps:
-  1. Open a pricelist detail page.
-- Expected:
-  - The button label reads `Add product`.
+### TC-032: Validation errors keep modals open
+- Submit a form with values the backend rejects.
+- Expected: modal stays open; banner shows `message`; `errors[]` map to field-level messages.
 
 ---
 
-## 10. Regions
+## 7. Localization & Routing
 
-### TC-029: Add region
-- Steps:
-  1. Open `Regions`.
-  2. Click `Add region`.
-  3. Fill fields.
-  4. Submit.
-- Expected:
-  - New region appears.
+### TC-033: Language switch (EN/AR)
+- Toggle locale on login and dashboard.
+- Expected: strings switch; RTL applies in Arabic; new strings (outcome enum, demo banner, cancel prompt) are translated both ways.
 
-### TC-030: Edit region
-- Steps:
-  1. Edit an existing region.
-  2. Change status or name.
-  3. Submit.
-- Expected:
-  - Region row updates.
-
-### TC-031: Delete region
-- Steps:
-  1. Delete a region.
-  2. Confirm.
-- Expected:
-  - Region disappears from list.
+### TC-034: Hash routing & fallback
+- Set the hash to `#invoice/<id>`, reload; then set an unsupported hash.
+- Expected: detail route renders; unsupported hash falls back to a valid page.
 
 ---
 
-## 11. Visits
+## 8. Full End-to-End Flow
 
-### TC-032: Create visit schedule
-- Steps:
-  1. Open `Visits`.
-  2. Click `Add visit`.
-  3. Fill visit start date, status, user, created by.
-  4. Submit.
-- Expected:
-  - Visit appears in schedule list.
-
-### TC-033: Edit visit schedule
-- Steps:
-  1. Click edit on a visit.
-  2. Modify status or date.
-  3. Submit.
-- Expected:
-  - Visit row updates.
-
-### TC-034: Archive visit
-- Steps:
-  1. Click archive on a visit row.
-  2. Confirm.
-- Expected:
-  - Visit status becomes `Archived`.
-
----
-
-## 12. Daily Visits
-
-### TC-035: Add daily visit
-- Steps:
-  1. Open `Daily Visits`.
-  2. Click `Add daily visit`.
-  3. Fill date, time, status, notes, customer, user, region.
-  4. Submit.
-- Expected:
-  - Daily visit appears.
-
-### TC-036: Edit daily visit
-- Steps:
-  1. Edit a daily visit entry.
-  2. Change status or notes.
-  3. Submit.
-- Expected:
-  - Entry updates.
-
-### TC-037: Delete daily visit
-- Steps:
-  1. Delete a daily visit.
-  2. Confirm.
-- Expected:
-  - Entry is removed.
-
----
-
-## 13. Users
-
-### TC-038: Add user
-- Steps:
-  1. Open `Users`.
-  2. Click `Add user`.
-  3. Fill name, email, password, phone, role, status.
-  4. Submit.
-- Expected:
-  - New user appears.
-
-### TC-039: Edit user
-- Steps:
-  1. Click edit on user row.
-  2. Update role or status.
-  3. Submit.
-- Expected:
-  - User record updates.
-
-### TC-040: Delete user
-- Steps:
-  1. Click delete on a user.
-  2. Confirm.
-- Expected:
-  - User is removed.
-
----
-
-## 14. Reports
-
-### TC-041: Reports page loads
-- Steps:
-  1. Open `Reports`.
-- Expected:
-  - Reports content is displayed.
-
-### TC-042: Reports page navigation works
-- Steps:
-  1. Click available report links or filters (if present).
-- Expected:
-  - Page content updates without errors.
-
----
-
-## 15. Form Validation and Modals
-
-### TC-043: Modal close works
-- Steps:
-  1. Open any add/edit modal.
-  2. Click cancel or close.
-- Expected:
-  - Modal closes and the page remains.
-
-### TC-044: Required fields enforce data entry
-- Steps:
-  1. Open a form modal.
-  2. Submit with missing required fields.
-- Expected:
-  - Form should not submit or should highlight missing values.
-
-### TC-045: Read-only fields appear for edit states where expected
-- Steps:
-  1. Open `Edit` modal for an entity.
-- Expected:
-  - Read-only fields (ID, created_at, invoice number) are not editable.
-
----
-
-## 16. Search and Filtering
-
-### TC-046: Table filter works
-- Steps:
-  1. Enter text in a table search field.
-- Expected:
-  - Table rows filter to matching entries.
-
----
-
-## 17. Localization / Language Switching
-
-### TC-047: Language switch persists
-- Steps:
-  1. Click locale switcher to Arabic.
-  2. Verify label text changes.
-  3. Switch back to English.
-- Expected:
-  - UI strings update accordingly.
-
----
-
-## 18. Data Integrity
-
-### TC-048: Data store updates reflect across views
-- Steps:
-  1. Create a new entity in one section.
-  2. Navigate to a related section.
-- Expected:
-  - Data is present consistently in both views.
-
-### TC-049: Archiving does not delete records
-- Steps:
-  1. Archive a pricelist.
-- Expected:
-  - The pricelist remains in the table, but its status changes to `Archived`.
-
----
-
-## 19. Regression / Edge Cases
-
-### TC-050: Add product without a pricelist blocked
-- Steps:
-  1. Open price item modal with no pricelist available.
-- Expected:
-  - A message shows that a pricelist is required.
-
-### TC-051: Invalid route fallback
-- Steps:
-  1. Set the URL hash to an unsupported route.
-- Expected:
-  - The app falls back to a valid page.
-
-### TC-052: Modal open from detail page with required preselection
-- Steps:
-  1. Open a pricelist detail page.
-  2. Click `Add product`.
-- Expected:
-  - Modal opens and the `Pricelist` selector is prefilled with the current list.
+### TC-035: Golden path
+- Login → customer → product/price list → draft invoice → confirm → PDF → payment/balance → visit → dashboard → recommendations → logout, per relevant role.
+- Expected: every step uses `/api/v1` through the central client; no P0/P1 issue from the alignment plan remains; console clean.
 
 ---
 
 ## Notes
 
-- These test cases are written for manual verification and can be converted into automated UI tests later.
-- The current app is mostly client-side and stateful; refresh behavior should preserve default data from `dataStore.js`.
-- New features such as pricelist item edit and pricelist archive should be added to regression test coverage.
+- These are manual cases; they can be automated later.
+- The app has no build step — it's static ES modules loaded by the browser.
+- Deferred items (see `INTEGRATION_NOTES.md`): visit create field-name verification, dashboard field-name verification, filter UIs beyond search, customer-balance UI.

@@ -1,13 +1,14 @@
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listInvoices } from "../../api/services/invoicesService.js";
 
 export async function renderInvoicesPage() {
   const page = getListPage("invoices");
-  const { items, pagination } = await listInvoices({ page, limit: 20 });
+  const search = getListSearch("invoices");
+  const { items, pagination } = await listInvoices({ page, limit: 20, search });
 
   const rows = items
     .map((row) => {
@@ -34,7 +35,7 @@ export async function renderInvoicesPage() {
   return `
     <section class="panel panel--flush">
       <div class="toolbar">
-        <input class="search-input table-filter" type="search" data-table="invoices" placeholder="${escapeHtml(t("invoices.searchPh"))}" />
+        ${renderSearchInput("invoices", t("invoices.searchPh"), search)}
         <button class="primary-btn toolbar-primary" type="button" data-action="open-entity-form" data-entity="invoice" data-mode="add">${escapeHtml(t("invoices.newInvoice"))}</button>
       </div>
       <div class="table-shell">

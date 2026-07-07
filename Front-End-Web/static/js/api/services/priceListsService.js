@@ -1,29 +1,30 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from "../apiClient.js";
 import { buildQueryString } from "../queryString.js";
+import { getList, getEntity } from "../extractors.js";
 
-export async function listPriceLists({ page, limit } = {}) {
-  const res = await apiGet(`/price-lists${buildQueryString({ page, limit })}`);
-  return { items: res.data || [], pagination: res.pagination || null };
+export async function listPriceLists(params = {}) {
+  const { page, limit, customerType, status, search, sortBy, sortOrder } = params;
+  const res = await apiGet(
+    `/price-lists${buildQueryString({ page, limit, customerType, status, search, sortBy, sortOrder })}`
+  );
+  return getList(res);
 }
 
 export async function getPriceList(id) {
-  const res = await apiGet(`/price-lists/${id}`);
-  return res.data;
+  return getEntity(await apiGet(`/price-lists/${id}`), "priceList");
 }
 
-export async function getPriceListsByCustomerType(customerType) {
-  const res = await apiGet(`/price-lists/customer-type/${customerType}`);
-  return res.data || [];
+// Customer-type lookup returns a single price list under data.priceList, NOT an array.
+export async function getPriceListByCustomerType(customerType) {
+  return getEntity(await apiGet(`/price-lists/customer-type/${customerType}`), "priceList");
 }
 
 export async function createPriceList(payload) {
-  const res = await apiPost("/price-lists", payload);
-  return res.data;
+  return getEntity(await apiPost("/price-lists", payload), "priceList");
 }
 
 export async function updatePriceList(id, payload) {
-  const res = await apiPatch(`/price-lists/${id}`, payload);
-  return res.data;
+  return getEntity(await apiPatch(`/price-lists/${id}`, payload), "priceList");
 }
 
 export async function deletePriceList(id) {

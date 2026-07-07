@@ -1,5 +1,6 @@
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
+import { can } from "../state/appState.js";
 import { renderErrorState } from "../components/asyncState.js";
 import { getInvoice } from "../../api/services/invoicesService.js";
 
@@ -59,8 +60,8 @@ export async function renderInvoiceDetailPage() {
         <div class="actions">
           <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="invoice" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("common.edit"))}</button>
           <button class="secondary-btn" type="button" data-action="confirm-invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.confirm"))}</button>
-          <button class="secondary-btn" type="button" data-action="mark-sent-invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.markSent"))}</button>
-          <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="payment" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.recordPayment"))}</button>
+          ${can("invoiceMarkSent") ? `<button class="secondary-btn" type="button" data-action="mark-sent-invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.markSent"))}</button>` : ""}
+          ${can("invoicePayment") ? `<button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="payment" data-mode="edit" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.recordPayment"))}</button>` : ""}
           <button class="secondary-btn" type="button" data-action="open-invoice-pdf" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("invoices.openPdf"))}</button>
           <button class="btn-text btn-text--warning" type="button" data-action="archive-entity" data-entity="invoice" data-id="${escapeHtml(invoiceId)}">${escapeHtml(t("common.archive"))}</button>
         </div>

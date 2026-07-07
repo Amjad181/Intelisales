@@ -41,7 +41,6 @@ export async function renderVisitDetailPage() {
         <button class="secondary-btn" type="button" data-action="nav-route" data-route="visits">${escapeHtml(t("common.list"))}</button>
         <div class="actions">
           <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="visit" data-mode="edit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("common.edit"))}</button>
-          <button class="secondary-btn" type="button" data-action="confirm-visit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.confirm"))}</button>
           <button class="secondary-btn" type="button" data-action="open-entity-form" data-entity="visitComplete" data-mode="edit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.complete"))}</button>
           <button class="btn-text btn-text--warning" type="button" data-action="cancel-visit" data-id="${escapeHtml(visitId)}">${escapeHtml(t("visits.cancel"))}</button>
         </div>
@@ -53,7 +52,7 @@ export async function renderVisitDetailPage() {
             <tbody>
               <tr>
                 <th>${escapeHtml(t("visits.thCustomer"))}</th>
-                <td>${escapeHtml(visit.customerSnapshot?.name || visit.customerId || "—")}</td>
+                <td>${escapeHtml(visit.customerSnapshot?.name || visit.customer?.name || "—")}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("visits.thSalesRep"))}</th>

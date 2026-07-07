@@ -1,4 +1,5 @@
 import { apiPost, apiGet } from "./apiClient.js";
+import { getEntity } from "./extractors.js";
 import {
   getAccessToken,
   setAccessToken,
@@ -36,7 +37,8 @@ export function getCachedUser() {
 }
 
 export async function refreshCurrentUser() {
-  const res = await apiGet("/auth/me");
-  if (res?.data) setStoredUser(res.data);
-  return res?.data;
+  // GET /auth/me nests the user under data.user.
+  const user = getEntity(await apiGet("/auth/me"), "user");
+  if (user) setStoredUser(user);
+  return user;
 }

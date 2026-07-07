@@ -1,14 +1,14 @@
-import { getUserName } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { renderRowActions } from "../components/tableActions.js";
-import { renderPager } from "../components/asyncState.js";
+import { renderPager, renderSearchInput } from "../components/asyncState.js";
 import { t } from "../../i18n/i18n.js";
-import { getListPage } from "../state/appState.js";
+import { getListPage, getListSearch } from "../state/appState.js";
 import { listCustomers } from "../../api/services/customersService.js";
 
 export async function renderCustomersPage() {
   const page = getListPage("customers");
-  const { items, pagination } = await listCustomers({ page, limit: 20 });
+  const search = getListSearch("customers");
+  const { items, pagination } = await listCustomers({ page, limit: 20, search });
 
   const rows = items
     .map((row) => {
@@ -19,7 +19,7 @@ export async function renderCustomersPage() {
           <td>${escapeHtml(row.contactName || "—")}</td>
           <td>${escapeHtml(row.phone || "—")}</td>
           <td>${escapeHtml(row.email || "—")}</td>
-          <td>${escapeHtml(getUserName(row.assignedSalesRep))}</td>
+          <td>${escapeHtml(row.assignedSalesRepSnapshot?.name || row.assignedSalesRep?.name || "—")}</td>
           <td><span class="badge badge--${row.customerType === 'Retail' ? 'ok' : 'info'}">${escapeHtml(row.customerType)}</span></td>
           <td class="td-actions">${renderRowActions("customer", id)}</td>
         </tr>
@@ -30,7 +30,7 @@ export async function renderCustomersPage() {
   return `
     <section class="panel panel--flush">
       <div class="toolbar">
-        <input class="search-input table-filter" type="search" data-table="customers" placeholder="${escapeHtml(t("customers.searchPh"))}" />
+        ${renderSearchInput("customers", t("customers.searchPh"), search)}
         <button class="primary-btn toolbar-primary" type="button" data-action="open-entity-form" data-entity="customer" data-mode="add">${escapeHtml(t("customers.add"))}</button>
       </div>
       <div class="table-shell">

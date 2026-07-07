@@ -2,7 +2,7 @@ import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
 import { renderErrorState } from "../components/asyncState.js";
 import { getPriceList } from "../../api/services/priceListsService.js";
-import { listProducts } from "../../api/services/productsService.js";
+import { listProductsForPriceList } from "../../api/services/productsService.js";
 
 export async function renderPricelistDetailPage() {
   const hash = window.location.hash.replace("#", "").trim();
@@ -26,7 +26,7 @@ export async function renderPricelistDetailPage() {
   try {
     const [pl, productsRes] = await Promise.all([
       getPriceList(pricelistId),
-      listProducts({ limit: 100 }),
+      listProductsForPriceList({ limit: 100 }),
     ]);
     pricelist = pl;
     productsById = new Map((productsRes.items || []).map((p) => [p.id || p._id, p.name]));

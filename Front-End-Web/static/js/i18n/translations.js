@@ -97,6 +97,8 @@ export const MESSAGES = {
       nextPage: "Next",
       pageStatus: "Page {page} of {pages}",
       saving: "Saving...",
+      demoOnlyTitle: "Local demo only",
+      demoOnlyBody: "This page uses sample data and is not connected to the backend.",
     },
     confirm: {
       deleteRecord: "Delete this record? This cannot be undone in demo mode.",
@@ -105,7 +107,6 @@ export const MESSAGES = {
       archivePricelist: "Archive this pricelist? It will be moved to archived status.",
       confirmInvoice: "Confirm this invoice?",
       markSentInvoice: "Mark this invoice as sent?",
-      confirmVisit: "Confirm this visit?",
       cancelVisit: "Cancel this visit?",
     },
     overview: {
@@ -229,9 +230,9 @@ export const MESSAGES = {
       thPurpose: "Purpose",
       thStatus: "Status",
       thSalesRep: "Sales Rep",
-      confirm: "Confirm",
       complete: "Complete",
       cancel: "Cancel",
+      cancelNotesPrompt: "Optional cancellation notes (leave blank to skip):",
     },
     reports: {
       title: "Reports Center",
@@ -449,6 +450,14 @@ export const MESSAGES = {
         amount: "Fixed amount",
         percentage: "Percentage",
       },
+      visitOutcome: {
+        ORDER_PLACED: "Order placed",
+        PAYMENT_COLLECTED: "Payment collected",
+        FOLLOW_UP_NEEDED: "Follow-up needed",
+        NO_INTEREST: "No interest",
+        CUSTOMER_UNAVAILABLE: "Customer unavailable",
+        OTHER: "Other",
+      },
     },
   },
   ar: {
@@ -549,6 +558,8 @@ export const MESSAGES = {
       nextPage: "التالي",
       pageStatus: "صفحة {page} من {pages}",
       saving: "جارٍ الحفظ...",
+      demoOnlyTitle: "عرض تجريبي محلي فقط",
+      demoOnlyBody: "تستخدم هذه الصفحة بيانات تجريبية وغير متصلة بالخادم.",
     },
     confirm: {
       deleteRecord: "حذف هذا السجل؟ لا يمكن التراجع في الوضع التجريبي.",
@@ -558,7 +569,6 @@ export const MESSAGES = {
       archivePricelist: "أرشفة قائمة الأسعار هذه؟ سيتم نقلها إلى حالة مؤرشفة.",
       confirmInvoice: "تأكيد هذه الفاتورة؟",
       markSentInvoice: "تعليم هذه الفاتورة كمُرسلة؟",
-      confirmVisit: "تأكيد هذه الزيارة؟",
       cancelVisit: "إلغاء هذه الزيارة؟",
     },
     overview: {
@@ -682,9 +692,9 @@ export const MESSAGES = {
       thPurpose: "الغرض",
       thStatus: "الحالة",
       thSalesRep: "المندوب",
-      confirm: "تأكيد",
       complete: "إكمال",
       cancel: "إلغاء",
+      cancelNotesPrompt: "ملاحظات إلغاء اختيارية (اتركها فارغة للتخطي):",
     },
     reports: {
       title: "مركز التقارير",
@@ -901,6 +911,14 @@ export const MESSAGES = {
         none: "بدون",
         amount: "مبلغ ثابت",
         percentage: "نسبة مئوية",
+      },
+      visitOutcome: {
+        ORDER_PLACED: "تم تسجيل طلب",
+        PAYMENT_COLLECTED: "تم تحصيل دفعة",
+        FOLLOW_UP_NEEDED: "يحتاج متابعة",
+        NO_INTEREST: "لا يوجد اهتمام",
+        CUSTOMER_UNAVAILABLE: "العميل غير متاح",
+        OTHER: "أخرى",
       },
     },
   },

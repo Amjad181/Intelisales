@@ -2,14 +2,14 @@ import { renderSidebar } from "./components/sidebar.js";
 import { renderTopbar } from "./components/topbar.js";
 import { buildModalMarkup, handleEntityFormSubmit } from "./components/entityModal.js";
 import { renderLoadingState, renderErrorState, renderModalLoadingOverlay, renderModalErrorOverlay } from "./components/asyncState.js";
-import { appState, setActiveRoute, getListPage, setListPage } from "./state/appState.js";
+import { appState, setActiveRoute, getListPage, setListPage, getListSearch, setListSearch, can } from "./state/appState.js";
 import {
   removeSale,
   removeTopRep,
   removeRegion,
 } from "./state/dataStore.js";
 import { getCustomer, deleteCustomer, listCustomers } from "../api/services/customersService.js";
-import { getProduct, deleteProduct, updateProduct, listProducts } from "../api/services/productsService.js";
+import { getProduct, deleteProduct, updateProduct, listProductsForPriceList } from "../api/services/productsService.js";
 import { getPriceList, deletePriceList, updatePriceList, removePriceListItem } from "../api/services/priceListsService.js";
 import { getUser, deleteUser } from "../api/services/usersService.js";
 import {
@@ -21,7 +21,6 @@ import {
 } from "../api/services/invoicesService.js";
 import {
   getVisit,
-  confirmVisit,
   cancelVisit,
 } from "../api/services/visitsService.js";
 import { renderOverviewPage } from "./pages/overviewPage.js";
@@ -186,7 +185,7 @@ async function openEntityModal(entity, mode, id, options = {}) {
       const priceListId = options.priceListId;
       const [priceList, productsRes] = await Promise.all([
         getPriceList(priceListId),
-        listProducts({ limit: 100 }),
+        listProductsForPriceList({ limit: 100 }),
       ]);
       const productOptions = (productsRes.items || []).map((p) => ({ value: p.id || p._id, label: p.name }));
       let record = { priceListId };
@@ -207,7 +206,7 @@ async function openEntityModal(entity, mode, id, options = {}) {
       const [invoice, customersRes, productsRes] = await Promise.all([
         mode === "edit" && id ? getInvoice(id) : Promise.resolve(null),
         listCustomers({ limit: 100 }),
-        listProducts({ limit: 100 }),
+        listProductsForPriceList({ limit: 100 }),
       ]);
       const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
       const productOptions = (productsRes.items || []).map((p) => ({ value: p.id || p._id, label: p.name }));
@@ -430,6 +429,7 @@ document.addEventListener("click", (event) => {
   if (action === "open-entity-form") {
     event.preventDefault();
     const entity = actionEl.dataset.entity;
+    if (entity === "payment" && !can("invoicePayment")) return;
     const mode = actionEl.dataset.mode || "add";
     const id = actionEl.dataset.id || "";
     const options = {};
@@ -455,6 +455,7 @@ document.addEventListener("click", (event) => {
 
   if (action === "mark-sent-invoice") {
     event.preventDefault();
+    if (!can("invoiceMarkSent")) return;
     const invoiceId = actionEl.dataset.id;
     if (invoiceId && window.confirm(t("confirm.markSentInvoice"))) {
       markInvoiceSent(invoiceId)
@@ -479,22 +480,14 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  if (action === "confirm-visit") {
-    event.preventDefault();
-    const visitId = actionEl.dataset.id;
-    if (visitId && window.confirm(t("confirm.confirmVisit"))) {
-      confirmVisit(visitId)
-        .then(() => renderApp())
-        .catch((err) => window.alert(err?.message || t("common.loadError")));
-    }
-    return;
-  }
-
   if (action === "cancel-visit") {
     event.preventDefault();
     const visitId = actionEl.dataset.id;
     if (visitId && window.confirm(t("confirm.cancelVisit"))) {
-      cancelVisit(visitId)
+      // Cancellation notes are optional; an empty/cancelled prompt sends no notes.
+      const notes = window.prompt(t("visits.cancelNotesPrompt")) || "";
+      const payload = notes.trim() ? { notes: notes.trim() } : {};
+      cancelVisit(visitId, payload)
         .then(() => renderApp())
         .catch((err) => window.alert(err?.message || t("common.loadError")));
     }
@@ -600,12 +593,57 @@ window.addEventListener("hashchange", () => {
   renderApp();
 });
 
+let searchDebounceTimer = null;
+let searchRequestToken = 0;
+
+function handleSearchInput(entityKey, rawValue) {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    const trimmed = rawValue.trim();
+    // Start after 2 characters; empty resets. A lone character is ignored.
+    if (trimmed.length === 1) return;
+    if (getListSearch(entityKey) === trimmed) return;
+    setListSearch(entityKey, trimmed);
+    setListPage(entityKey, 1);
+    reloadActivePageForSearch(entityKey);
+  }, 350);
+}
+
+async function reloadActivePageForSearch(entityKey) {
+  const allowedKeys = new Set(ROLE_PERMISSIONS[appState.userRoleKey] || []);
+  const activeRoute = getRouteFromHash(allowedKeys);
+  const currentRoute = routes.find((item) => item.key === activeRoute) || routes[0];
+  const token = ++searchRequestToken;
+  try {
+    const result = currentRoute.render();
+    const html = result instanceof Promise ? await result : result;
+    if (token !== searchRequestToken) return; // a newer keystroke superseded this request
+    pageMount.innerHTML = html;
+  } catch (err) {
+    if (token !== searchRequestToken) return;
+    pageMount.innerHTML = renderErrorState(err, "retry-route");
+  }
+  const input = document.getElementById(`search-${entityKey}`);
+  if (input) {
+    input.focus();
+    const value = input.value;
+    input.value = "";
+    input.value = value; // keep the caret at the end after re-render
+  }
+}
+
 document.addEventListener("input", (event) => {
   const el = event.target;
   if (!(el instanceof HTMLInputElement)) return;
-  if (!el.classList.contains("table-filter")) return;
-  const table = el.dataset.table;
-  if (table) filterTable(table, el.value);
+  // Local demo pages (Sales, Regions) keep client-side row filtering.
+  if (el.classList.contains("table-filter")) {
+    const table = el.dataset.table;
+    if (table) filterTable(table, el.value);
+    return;
+  }
+  // Backend-connected lists: debounced server-side search.
+  const searchKey = el.dataset.search;
+  if (searchKey) handleSearchInput(searchKey, el.value);
 });
 
 renderApp();

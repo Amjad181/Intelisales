@@ -1,13 +1,24 @@
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
+import { appState } from "../state/appState.js";
 import { getDashboardSummary, getSalesRepsPerformance, getRecentActivity } from "../../api/services/dashboardService.js";
 
+// Sales-reps performance is restricted to these roles by the backend — don't even
+// request it for others (it would 403 and blank an otherwise-healthy dashboard).
+const SALES_REPS_ROLES = new Set(["administrator", "salesManager", "salesSupervisor"]);
+
 export async function renderOverviewPage() {
-  const [summary, salesReps, recentActivity] = await Promise.all([
-    getDashboardSummary(),
-    getSalesRepsPerformance(),
+  // The summary is the primary payload — let it surface a real error/retry state.
+  const summary = await getDashboardSummary();
+
+  // Secondary panels load independently so a single failure (e.g. 403) doesn't blank the page.
+  const canSeeReps = SALES_REPS_ROLES.has(appState.userRoleKey);
+  const [salesRepsRes, activityRes] = await Promise.allSettled([
+    canSeeReps ? getSalesRepsPerformance() : Promise.resolve([]),
     getRecentActivity(10),
   ]);
+  const salesReps = salesRepsRes.status === "fulfilled" ? salesRepsRes.value : [];
+  const recentActivity = activityRes.status === "fulfilled" ? activityRes.value : [];
 
   // The PDF only documents the summary's top-level groups (customers/products/invoices/visits/recent),
   // not exact field names within each — read defensively until verified against a real backend.
