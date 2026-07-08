@@ -36,7 +36,11 @@ class ProductSuggestionsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, size: 16, color: AppColors.tertiary),
+              const Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: AppColors.tertiary,
+              ),
               const SizedBox(width: 6),
               Text(
                 ar ? 'قد يعجب الزبون أيضاً' : 'Customer might also like',
@@ -100,7 +104,9 @@ class _SuggestionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: AppColors.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,7 +143,10 @@ class _SuggestionCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             formatSYP(suggestion.price, ar),
-            style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ],
       ),

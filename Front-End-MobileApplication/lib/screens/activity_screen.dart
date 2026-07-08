@@ -35,7 +35,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
     _selectedWeekday = DateTime.now().weekday;
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
-      final match = _visits.where((v) => v.line.tradeCenterName.toLowerCase().contains(q));
+      final match = _visits.where(
+        (v) => v.line.tradeCenterName.toLowerCase().contains(q),
+      );
       if (match.isNotEmpty) _selectedWeekday = match.first.line.weekday;
     }
   }
@@ -64,16 +66,26 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   Future<void> _openDirections(ScheduledVisit visit, bool ar) async {
-    final query = Uri.encodeComponent('${visit.line.tradeCenterName}, ${visit.line.region}');
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    final query = Uri.encodeComponent(
+      '${visit.line.tradeCenterName}, ${visit.line.region}',
+    );
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$query',
+    );
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ar ? 'تعذر فتح تطبيق الخرائط' : 'Could not open the maps app'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ar ? 'تعذر فتح تطبيق الخرائط' : 'Could not open the maps app',
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
 
@@ -105,13 +117,19 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   Text(
                     ar ? 'إنتيلي سيلز' : 'IntelliSales',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 17, color: AppColors.primary),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ],
               ),
         actions: [
           IconButton(
-            icon: Icon(_searching ? Icons.close : Icons.search, color: AppColors.primary),
+            icon: Icon(
+              _searching ? Icons.close : Icons.search,
+              color: AppColors.primary,
+            ),
             onPressed: () => setState(() {
               if (_searching) {
                 _searching = false;
@@ -138,10 +156,16 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     Text(
                       ar ? 'المخطط الأسبوعي' : 'Weekly Plan',
                       style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.onSurface),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -149,7 +173,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       child: Text(
                         _schedule.status.label(ar),
                         style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -157,59 +184,80 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: (ar ? weekDisplayOrder.reversed.toList() : weekDisplayOrder)
-                      .map((weekday) {
-                    final labels = weekdayLabels[weekday]!;
-                    final date = dateForWeekday(_schedule.weekStart, weekday);
-                    final isSelected = weekday == _selectedWeekday;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedWeekday = weekday),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 46,
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primaryContainer : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.25),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  )
-                                ]
-                              : null,
-                        ),
-                        child: Column(
-                          children: [
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                ar ? weekdayShortLabelAr[weekday]! : labels.$1,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                  children:
+                      (ar
+                              ? weekDisplayOrder.reversed.toList()
+                              : weekDisplayOrder)
+                          .map((weekday) {
+                            final labels = weekdayLabels[weekday]!;
+                            final date = dateForWeekday(
+                              _schedule.weekStart,
+                              weekday,
+                            );
+                            final isSelected = weekday == _selectedWeekday;
+                            return GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedWeekday = weekday),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 46,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 2,
+                                ),
+                                decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColors.onPrimaryContainer
-                                      : AppColors.onSurfaceVariant,
+                                      ? AppColors.primaryContainer
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.25,
+                                            ),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Column(
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        ar
+                                            ? weekdayShortLabelAr[weekday]!
+                                            : labels.$1,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSelected
+                                              ? AppColors.onPrimaryContainer
+                                              : AppColors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${date.day}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w400,
+                                        color: isSelected
+                                            ? AppColors.onPrimaryContainer
+                                            : AppColors.onSurface,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${date.day}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                                color: isSelected ? AppColors.onPrimaryContainer : AppColors.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                            );
+                          })
+                          .toList(),
                 ),
               ],
             ),
@@ -253,8 +301,13 @@ class _DayVisits extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            ar ? 'لا توجد زيارات مجدولة في هذا اليوم' : 'No visits scheduled for this day',
-            style: const TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
+            ar
+                ? 'لا توجد زيارات مجدولة في هذا اليوم'
+                : 'No visits scheduled for this day',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ),
       );
@@ -271,12 +324,14 @@ class _DayVisits extends StatelessWidget {
         ),
         Column(
           children: visits
-              .map((v) => _VisitCard(
-                    visit: v,
-                    ar: ar,
-                    onRecordOutcome: () => onRecordOutcome(v),
-                    onDirections: () => onDirections(v),
-                  ))
+              .map(
+                (v) => _VisitCard(
+                  visit: v,
+                  ar: ar,
+                  onRecordOutcome: () => onRecordOutcome(v),
+                  onDirections: () => onDirections(v),
+                ),
+              )
               .toList(),
         ),
       ],
@@ -311,12 +366,24 @@ class _VisitCard extends StatelessWidget {
       return (AppColors.error, AppColors.onError, Icons.cancel);
     }
     if (visit.isToday) {
-      return (AppColors.primaryContainer, AppColors.onPrimaryContainer, Icons.location_on);
+      return (
+        AppColors.primaryContainer,
+        AppColors.onPrimaryContainer,
+        Icons.location_on,
+      );
     }
     if (visit.isPast) {
-      return (AppColors.errorContainer, AppColors.onErrorContainer, Icons.error_outline);
+      return (
+        AppColors.errorContainer,
+        AppColors.onErrorContainer,
+        Icons.error_outline,
+      );
     }
-    return (AppColors.secondaryContainer, AppColors.onSecondaryContainer, Icons.schedule);
+    return (
+      AppColors.secondaryContainer,
+      AppColors.onSecondaryContainer,
+      Icons.schedule,
+    );
   }
 
   (Color bg, Color fg, String label) get _badge {
@@ -325,8 +392,8 @@ class _VisitCard extends StatelessWidget {
       final color = outcome == VisitOutcome.effective
           ? AppColors.tertiary
           : outcome == VisitOutcome.notEffective
-              ? _warning
-              : AppColors.error;
+          ? _warning
+          : AppColors.error;
       return (color.withValues(alpha: 0.12), color, outcome.label(ar));
     }
     if (visit.isPast) {
@@ -378,26 +445,45 @@ class _VisitCard extends StatelessWidget {
     );
 
     final headerTexts = Column(
-      crossAxisAlignment: ar ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: ar
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           ar ? _timeRangeAr : _timeRangeEn,
           style: const TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.outline, letterSpacing: 0.3),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.outline,
+            letterSpacing: 0.3,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           line.tradeCenterName,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onSurface),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: AppColors.onSurface,
+          ),
         ),
       ],
     );
 
     final badgeChip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: badge.$1, borderRadius: BorderRadius.circular(20)),
-      child: Text(badge.$3,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: badge.$2)),
+      decoration: BoxDecoration(
+        color: badge.$1,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        badge.$3,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: badge.$2,
+        ),
+      ),
     );
 
     final card = Container(
@@ -413,7 +499,11 @@ class _VisitCard extends StatelessWidget {
           width: visit.isToday && visit.outcome == null ? 2 : 1,
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -427,11 +517,19 @@ class _VisitCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.place_outlined, size: 14, color: AppColors.onSurfaceVariant),
+              const Icon(
+                Icons.place_outlined,
+                size: 14,
+                color: AppColors.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 line.region,
-                style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant, height: 1.4),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -440,7 +538,10 @@ class _VisitCard extends StatelessWidget {
             Text(
               visit.notes,
               style: const TextStyle(
-                  fontSize: 13, color: AppColors.onSurfaceVariant, fontStyle: FontStyle.italic),
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
           const SizedBox(height: 10),
@@ -450,17 +551,25 @@ class _VisitCard extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: onRecordOutcome,
-                    icon: Icon(visit.outcome == null ? Icons.edit_note : Icons.edit, size: 16),
+                    icon: Icon(
+                      visit.outcome == null ? Icons.edit_note : Icons.edit,
+                      size: 16,
+                    ),
                     label: Text(
                       visit.outcome == null
                           ? (ar ? 'تسجيل نتيجة الزيارة' : 'Record Outcome')
                           : (ar ? 'تعديل النتيجة' : 'Edit Outcome'),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
@@ -471,11 +580,16 @@ class _VisitCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onDirections,
                   icon: const Icon(Icons.directions_outlined, size: 16),
-                  label: Text(ar ? 'الاتجاهات' : 'Directions', style: const TextStyle(fontSize: 13)),
+                  label: Text(
+                    ar ? 'الاتجاهات' : 'Directions',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.onSurfaceVariant,
                     side: const BorderSide(color: AppColors.outline),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
@@ -489,8 +603,24 @@ class _VisitCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: ar
-          ? [Expanded(child: Padding(padding: const EdgeInsets.only(right: 12), child: card)), dotWidget]
-          : [dotWidget, Expanded(child: Padding(padding: const EdgeInsets.only(left: 12), child: card))],
+          ? [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: card,
+                ),
+              ),
+              dotWidget,
+            ]
+          : [
+              dotWidget,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: card,
+                ),
+              ),
+            ],
     );
   }
 }

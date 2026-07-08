@@ -39,8 +39,12 @@ Future<void> showProfilePhotoSheet(BuildContext context) async {
     );
   } catch (_) {
     if (context.mounted) {
-      _showMessage(context,
-          ar ? 'تعذر فتح الكاميرا أو المعرض' : 'Could not open the camera or gallery');
+      _showMessage(
+        context,
+        ar
+            ? 'تعذر فتح الكاميرا أو المعرض'
+            : 'Could not open the camera or gallery',
+      );
     }
     return;
   }
@@ -79,11 +83,13 @@ Future<void> showProfilePhotoViewer(BuildContext context) async {
 }
 
 void _showMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(message),
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  ));
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
 }
 
 Future<void> _showPreviewDialog(BuildContext context, Uint8List bytes) async {
@@ -112,7 +118,10 @@ Future<void> _showPreviewDialog(BuildContext context, Uint8List bytes) async {
                   ar
                       ? 'شروط الصورة الشخصية:\n• صورتك الشخصية أنت فقط\n• يظهر فيها الوجه والأكتاف بوضوح'
                       : 'Photo requirements:\n• A personal photo of yourself only\n• Face and shoulders clearly visible',
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.onSurfaceVariant),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -180,7 +189,10 @@ class _PhotoViewer extends StatelessWidget {
               color: Colors.white10,
               border: Border.all(color: Colors.white24, width: 2),
               image: photo != null
-                  ? DecorationImage(image: MemoryImage(photo!), fit: BoxFit.cover)
+                  ? DecorationImage(
+                      image: MemoryImage(photo!),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: photo == null
@@ -197,21 +209,24 @@ class _PhotoViewer extends StatelessWidget {
                       _ViewerActionButton(
                         icon: Icons.edit_outlined,
                         label: ar ? 'تعديل' : 'Edit',
-                        onTap: () => Navigator.pop(context, _PhotoViewerResult.edit),
+                        onTap: () =>
+                            Navigator.pop(context, _PhotoViewerResult.edit),
                       ),
                       const SizedBox(width: 32),
                       _ViewerActionButton(
                         icon: Icons.delete_outline,
                         label: ar ? 'إزالة' : 'Remove',
                         color: Colors.redAccent,
-                        onTap: () => Navigator.pop(context, _PhotoViewerResult.remove),
+                        onTap: () =>
+                            Navigator.pop(context, _PhotoViewerResult.remove),
                       ),
                     ]
                   : [
                       _ViewerActionButton(
                         icon: Icons.add_a_photo_outlined,
                         label: ar ? 'إضافة' : 'Add',
-                        onTap: () => Navigator.pop(context, _PhotoViewerResult.edit),
+                        onTap: () =>
+                            Navigator.pop(context, _PhotoViewerResult.edit),
                       ),
                     ],
             ),
@@ -248,7 +263,14 @@ class _ViewerActionButton extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 26),
               const SizedBox(height: 6),
-              Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -281,7 +303,11 @@ class ProfileAvatar extends StatelessWidget {
             backgroundColor: AppColors.surfaceContainerHigh,
             backgroundImage: photo != null ? MemoryImage(photo) : null,
             child: photo == null
-                ? Icon(Icons.person, size: radius * 1.125, color: AppColors.secondary)
+                ? Icon(
+                    Icons.person,
+                    size: radius * 1.125,
+                    color: AppColors.secondary,
+                  )
                 : null,
           ),
           if (showEditBadge)
@@ -294,9 +320,16 @@ class ProfileAvatar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surfaceContainerLowest, width: 1.5),
+                  border: Border.all(
+                    color: AppColors.surfaceContainerLowest,
+                    width: 1.5,
+                  ),
                 ),
-                child: Icon(Icons.camera_alt, color: Colors.white, size: badgeSize * 0.6),
+                child: Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: badgeSize * 0.6,
+                ),
               ),
             ),
         ],
@@ -347,24 +380,38 @@ class _SourceSheet extends StatelessWidget {
               ar
                   ? 'يجب أن تكون صورة شخصية تظهر الوجه والأكتاف بوضوح'
                   : 'Must be a personal photo clearly showing the face and shoulders',
-              style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.primary),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.primary,
+              ),
               title: Text(ar ? 'التقاط صورة' : 'Take a Photo'),
               onTap: () => Navigator.pop(context, _PhotoAction.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.primary,
+              ),
               title: Text(ar ? 'اختيار من المعرض' : 'Choose from Gallery'),
               onTap: () => Navigator.pop(context, _PhotoAction.gallery),
             ),
             if (hasPhoto)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppColors.error),
-                title: Text(ar ? 'إزالة الصورة' : 'Remove Photo',
-                    style: const TextStyle(color: AppColors.error)),
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.error,
+                ),
+                title: Text(
+                  ar ? 'إزالة الصورة' : 'Remove Photo',
+                  style: const TextStyle(color: AppColors.error),
+                ),
                 onTap: () => Navigator.pop(context, _PhotoAction.remove),
               ),
             const SizedBox(height: 8),

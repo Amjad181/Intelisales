@@ -25,20 +25,20 @@ class MainShellState extends State<MainShell> {
   String? _activityQuery;
 
   void goTo(int index) => setState(() {
-        _currentIndex = index;
-        if (index == 3) _invoicesFilter = null;
-        if (index == 2) _activityQuery = null;
-      });
+    _currentIndex = index;
+    if (index == 3) _invoicesFilter = null;
+    if (index == 2) _activityQuery = null;
+  });
 
   void goToInvoices(String filter) => setState(() {
-        _currentIndex = 3;
-        _invoicesFilter = filter;
-      });
+    _currentIndex = 3;
+    _invoicesFilter = filter;
+  });
 
   void goToActivity({String? searchQuery}) => setState(() {
-        _currentIndex = 2;
-        _activityQuery = searchQuery;
-      });
+    _currentIndex = 2;
+    _activityQuery = searchQuery;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -47,9 +47,14 @@ class MainShellState extends State<MainShell> {
     final screens = [
       const DashboardScreen(),
       const CustomersScreen(),
-      ActivityScreen(key: ValueKey(_activityQuery), initialQuery: _activityQuery),
+      ActivityScreen(
+        key: ValueKey(_activityQuery),
+        initialQuery: _activityQuery,
+      ),
       InvoicesScreen(
-          key: ValueKey(_invoicesFilter), initialFilter: _invoicesFilter),
+        key: ValueKey(_invoicesFilter),
+        initialFilter: _invoicesFilter,
+      ),
       _MoreScreen(),
     ];
 
@@ -76,10 +81,7 @@ class MainShellState extends State<MainShell> {
     return Directionality(
       textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: screens,
-        ),
+        body: IndexedStack(index: _currentIndex, children: screens),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (i) => setState(() => _currentIndex = i),
@@ -88,8 +90,10 @@ class MainShellState extends State<MainShell> {
           backgroundColor: AppColors.surface,
           type: BottomNavigationBarType.fixed,
           elevation: 8,
-          selectedLabelStyle:
-              const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          selectedLabelStyle: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
           unselectedLabelStyle: const TextStyle(fontSize: 11),
           items: List.generate(
             5,
@@ -113,8 +117,9 @@ class _MoreScreen extends StatelessWidget {
     final loc = AppLocale.of(context);
     final ar = loc.isArabic;
     final userName = UserSession.of(context).name;
-    final displayName =
-        userName.isEmpty ? (ar ? 'المندوب' : 'Representative') : userName;
+    final displayName = userName.isEmpty
+        ? (ar ? 'المندوب' : 'Representative')
+        : userName;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -122,7 +127,9 @@ class _MoreScreen extends StatelessWidget {
         title: Text(
           ar ? 'المزيد' : 'More',
           style: const TextStyle(
-              fontWeight: FontWeight.w700, color: AppColors.primary),
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
         ),
         backgroundColor: AppColors.surface,
         elevation: 0,
@@ -136,7 +143,9 @@ class _MoreScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+              border: Border.all(
+                color: AppColors.outlineVariant.withValues(alpha: 0.4),
+              ),
             ),
             child: Row(
               children: [
@@ -149,14 +158,19 @@ class _MoreScreen extends StatelessWidget {
                       Text(
                         displayName,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: AppColors.onSurface),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                       Text(
-                        ar ? 'مندوب مبيعات ميداني' : 'Field Sales Representative',
+                        ar
+                            ? 'مندوب مبيعات ميداني'
+                            : 'Field Sales Representative',
                         style: const TextStyle(
-                            fontSize: 13, color: AppColors.onSurfaceVariant),
+                          fontSize: 13,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -171,9 +185,9 @@ class _MoreScreen extends StatelessWidget {
           _MoreTile(
             icon: Icons.info_outline,
             label: ar ? 'حول التطبيق' : 'About',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AboutScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const AboutScreen())),
           ),
           const SizedBox(height: 8),
           _MoreTile(
@@ -186,7 +200,10 @@ class _MoreScreen extends StatelessWidget {
           Text(
             '© 2024 IntelliSales v1.0.0',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -220,7 +237,8 @@ class _MoreScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    UserSession.of(context).setName('');
+    await UserSession.of(context).logout();
+    if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
@@ -241,7 +259,9 @@ class _LanguageTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: AppColors.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -250,22 +270,31 @@ class _LanguageTile extends StatelessWidget {
         child: PopupMenuButton<bool>(
           onSelected: onSelect,
           offset: const Offset(0, 44),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           itemBuilder: (context) => [
             _langItem(value: true, label: 'العربية', selected: ar),
             _langItem(value: false, label: 'English', selected: !ar),
           ],
           child: ListTile(
             leading: const Icon(Icons.language, color: AppColors.onSurface),
-            title: Text(ar ? 'اللغة' : 'Language',
-                style: const TextStyle(
-                    color: AppColors.onSurface, fontWeight: FontWeight.w500)),
+            title: Text(
+              ar ? 'اللغة' : 'Language',
+              style: const TextStyle(
+                color: AppColors.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   ar ? 'العربية' : 'English',
-                  style: const TextStyle(color: AppColors.primary, fontSize: 14),
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 14,
+                  ),
                 ),
                 const Icon(Icons.arrow_drop_down, color: AppColors.outline),
               ],
@@ -276,19 +305,23 @@ class _LanguageTile extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<bool> _langItem(
-      {required bool value, required String label, required bool selected}) {
+  PopupMenuItem<bool> _langItem({
+    required bool value,
+    required String label,
+    required bool selected,
+  }) {
     return PopupMenuItem<bool>(
       value: value,
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: TextStyle(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.onSurface)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                color: selected ? AppColors.primary : AppColors.onSurface,
+              ),
+            ),
           ),
           if (selected)
             const Icon(Icons.check, size: 18, color: AppColors.primary),
@@ -318,7 +351,9 @@ class _MoreTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: AppColors.outlineVariant.withValues(alpha: 0.4),
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -326,7 +361,10 @@ class _MoreTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           leading: Icon(icon, color: color),
-          title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+          title: Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w500),
+          ),
           trailing: const Icon(Icons.chevron_right, color: AppColors.outline),
           onTap: onTap,
         ),

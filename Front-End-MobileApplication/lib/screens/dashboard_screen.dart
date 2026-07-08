@@ -1,23 +1,87 @@
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 import '../main.dart';
 import '../theme/app_colors.dart';
 import '../data/sample_data.dart';
 import '../utils/currency.dart';
+import '../services/api_client.dart';
+import '../services/customer_service.dart';
+import '../services/dashboard_service.dart';
+import '../widgets/demo_data_banner.dart';
+import '../widgets/error_retry_view.dart';
+import 'customers_screen.dart';
 import 'invoice_pdf_screen.dart';
 import 'main_shell.dart';
 import 'add_customer_dialog.dart';
 import 'new_invoice_flow.dart';
 import '../widgets/profile_photo_picker.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _loading = true;
+  String? _error;
+  bool _usingDemoData = false;
+  DashboardSummary? _summary;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final summary = await DashboardService.summary();
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _usingDemoData = false;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _summary = null;
+        if (ApiConfig.demoMode) {
+          _usingDemoData = true;
+        } else {
+          _error = e.message;
+        }
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ar = AppLocale.of(context).isArabic;
     final userName = UserSession.of(context).name;
-    final displayName =
-        userName.isEmpty ? (ar ? 'المندوب' : 'Representative') : userName;
+    final displayName = userName.isEmpty
+        ? (ar ? 'المندوب' : 'Representative')
+        : userName;
+    // الحقول الدقيقة من data.summary.visits حسب العقد (لا completedToday مخمّن)
+    final visits = _summary?.visits;
+    final visitsLabel = visits != null
+        ? '${visits.completed}/${visits.planned}'
+        : (_usingDemoData ? '8/12' : '—');
+    // المبلغ المتبقي محسوب على الخادم ضمن الملخص — لا حساب محلي للأرصدة
+    final pendingInvoicesAmount = _usingDemoData
+        ? 1420.0
+        : (_summary?.invoices.remainingAmount ?? 0.0);
+    // بطاقات "الفواتير الأخيرة" من summary.recent.invoices حسب الخطة
+    final recentInvoices = (_summary?.recentInvoices ?? const <Invoice>[])
+        .take(2)
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -65,211 +129,268 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Bento metrics grid
-          Row(
-            children: [
-              Expanded(child: _MetricCard(
-                icon: Icons.task_alt,
-                iconBg: AppColors.primary.withValues(alpha: 0.1),
-                iconColor: AppColors.primary,
-                value: '8/12',
-                label: ar ? 'زيارات اليوم' : 'Visits Today',
-                onTap: () => MainShell.of(context)?.goTo(2),
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: _MetricCard(
-                icon: Icons.pending_actions,
-                iconBg: AppColors.error.withValues(alpha: 0.1),
-                iconColor: AppColors.error,
-                value: formatSYP(1420, ar),
-                label: ar ? 'فواتير معلقة' : 'Pending Invoices',
-                onTap: () => MainShell.of(context)?.goToInvoices('OVERDUE'),
-              )),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Sales target card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryContainer.withValues(alpha: 0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          if (_usingDemoData) DemoDataBanner(ar: ar),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: CircularProgressIndicator()),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (!_loading && _error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: ErrorRetryView(message: _error!, ar: ar, onRetry: _load),
+            ),
+
+          if (!_loading && _error == null) ...[
+            // Bento metrics grid
+            Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      ar ? 'هدف المبيعات' : 'Sales Target',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        ar ? '٧٢٪ من التقدم' : '72% Progress',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: 0.72,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.white),
-                    minHeight: 10,
+                Expanded(
+                  child: _MetricCard(
+                    icon: Icons.task_alt,
+                    iconBg: AppColors.primary.withValues(alpha: 0.1),
+                    iconColor: AppColors.primary,
+                    value: visitsLabel,
+                    label: ar ? 'زيارات اليوم' : 'Visits Today',
+                    onTap: () => MainShell.of(context)?.goTo(2),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      ar
-                          ? 'تم تحقيق ${formatSYP(18000, ar)}'
-                          : '${formatSYP(18000, ar)} achieved',
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12),
-                    ),
-                    Text(
-                      ar
-                          ? 'الهدف ${formatSYP(25000, ar)}'
-                          : '${formatSYP(25000, ar)} goal',
-                      style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MetricCard(
+                    icon: Icons.pending_actions,
+                    iconBg: AppColors.error.withValues(alpha: 0.1),
+                    iconColor: AppColors.error,
+                    value: formatSYP(pendingInvoicesAmount, ar),
+                    label: ar ? 'فواتير معلقة' : 'Pending Invoices',
+                    onTap: () => MainShell.of(context)?.goToInvoices('OVERDUE'),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
-          // Quick Actions
-          Text(
-            ar ? 'إجراءات سريعة' : 'Quick Actions',
-            style: const TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.onBackground),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.add_location_alt_outlined,
-                  iconColor: AppColors.primary,
-                  iconBg: AppColors.primaryContainer.withValues(alpha: 0.1),
-                  label: ar ? 'زيارة جديدة' : 'New Visit',
-                  onTap: () => MainShell.of(context)?.goTo(2),
-                ),
+            // Sales target card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryContainer.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.person_add_outlined,
-                  iconColor: AppColors.tertiary,
-                  iconBg: AppColors.tertiaryContainer.withValues(alpha: 0.1),
-                  label: ar ? 'عميل جديد' : 'New Customer',
-                  onTap: () => _startAddCustomer(context),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        ar ? 'هدف المبيعات (تجريبي)' : 'Sales Target (Demo)',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          ar ? '٧٢٪ من التقدم' : '72% Progress',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: 0.72,
+                      backgroundColor: Colors.white.withValues(alpha: 0.25),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                      minHeight: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        ar
+                            ? 'تم تحقيق ${formatSYP(18000, ar)}'
+                            : '${formatSYP(18000, ar)} achieved',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        ar
+                            ? 'الهدف ${formatSYP(25000, ar)}'
+                            : '${formatSYP(25000, ar)} goal',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.post_add_outlined,
-                  iconColor: AppColors.secondary,
-                  iconBg: AppColors.secondaryContainer.withValues(alpha: 0.15),
-                  label: ar ? 'فاتورة جديدة' : 'New Invoice',
-                  onTap: () => startNewInvoiceFlow(context, ar),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
+            ),
+            const SizedBox(height: 24),
 
-          // Recent Invoices
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                ar ? 'الفواتير الأخيرة' : 'Recent Invoices',
-                style: const TextStyle(
+            // Quick Actions
+            Text(
+              ar ? 'إجراءات سريعة' : 'Quick Actions',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onBackground,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.add_location_alt_outlined,
+                    iconColor: AppColors.primary,
+                    iconBg: AppColors.primaryContainer.withValues(alpha: 0.1),
+                    label: ar ? 'زيارة جديدة' : 'New Visit',
+                    onTap: () => MainShell.of(context)?.goTo(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.person_add_outlined,
+                    iconColor: AppColors.tertiary,
+                    iconBg: AppColors.tertiaryContainer.withValues(alpha: 0.1),
+                    label: ar ? 'عميل جديد' : 'New Customer',
+                    onTap: () => _startAddCustomer(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.post_add_outlined,
+                    iconColor: AppColors.secondary,
+                    iconBg: AppColors.secondaryContainer.withValues(
+                      alpha: 0.15,
+                    ),
+                    label: ar ? 'فاتورة جديدة' : 'New Invoice',
+                    onTap: () => startNewInvoiceFlow(context, ar),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Recent Invoices
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  ar ? 'الفواتير الأخيرة' : 'Recent Invoices',
+                  style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.onBackground),
-              ),
-              TextButton(
-                onPressed: () => MainShell.of(context)?.goTo(3),
-                child: Text(
-                  ar ? 'كل الفواتير' : 'All Invoices',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                    color: AppColors.onBackground,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            child: Column(
-              children: [
-                _InvoiceRow(
-                  icon: Icons.receipt_long,
-                  iconBg: AppColors.secondaryContainer.withValues(alpha: 0.3),
-                  iconColor: AppColors.secondary,
-                  id: 'INV-8821',
-                  customer: ar ? 'مترو للخدمات اللوجستية' : 'BrightHome Supplies',
-                  amount: formatSYP(3450.00, ar),
-                  status: 'PAID',
-                  statusLabel: ar ? 'مدفوع' : 'Paid',
-                  isLast: false,
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const InvoicePdfScreen(items: []))),
-                ),
-                _InvoiceRow(
-                  icon: Icons.timer_outlined,
-                  iconBg: AppColors.errorContainer.withValues(alpha: 0.3),
-                  iconColor: AppColors.error,
-                  id: 'INV-8822',
-                  customer: ar ? 'فيلوسيتي بارتنرز' : 'PureClean Corp',
-                  amount: formatSYP(1420.00, ar),
-                  status: 'PENDING',
-                  statusLabel: ar ? 'معلق' : 'Pending',
-                  isLast: true,
-                  onTap: () {},
+                TextButton(
+                  onPressed: () => MainShell.of(context)?.goTo(3),
+                  child: Text(
+                    ar ? 'كل الفواتير' : 'All Invoices',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                ),
+              ),
+              child: recentInvoices.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        ar ? 'لا توجد فواتير بعد' : 'No invoices yet',
+                        style: const TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final invoice in recentInvoices)
+                          _InvoiceRow(
+                            icon: invoice.status == 'PAID'
+                                ? Icons.receipt_long
+                                : Icons.timer_outlined,
+                            iconBg: invoice.status == 'PAID'
+                                ? AppColors.secondaryContainer.withValues(
+                                    alpha: 0.3,
+                                  )
+                                : AppColors.errorContainer.withValues(
+                                    alpha: 0.3,
+                                  ),
+                            iconColor: invoice.status == 'PAID'
+                                ? AppColors.secondary
+                                : AppColors.error,
+                            id: invoice.id,
+                            customer: ar
+                                ? invoice.customerAr
+                                : invoice.customer,
+                            amount: formatSYP(invoice.amount, ar),
+                            status: invoice.status,
+                            statusLabel: invoice.status,
+                            isLast: invoice == recentInvoices.last,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => InvoicePdfScreen(
+                                  items: invoice.items,
+                                  invoiceId: invoice.id.isNotEmpty
+                                      ? invoice.id
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
         ],
       ),
     );
@@ -285,18 +406,60 @@ Future<void> _startAddCustomer(BuildContext context) async {
     builder: (_) => const AddCustomerDialog(),
   );
 
-  if (newCustomer != null && context.mounted) {
-    sampleCustomers.add(newCustomer);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ar
-          ? 'تمت إضافة العميل "${newCustomer.nameAr}" بنجاح'
-          : 'Customer "${newCustomer.name}" added successfully'),
+  if (newCustomer == null || !context.mounted) return;
+
+  try {
+    await CustomerService.create(newCustomer);
+  } on ApiException catch (e) {
+    if (ApiConfig.demoMode) {
+      // وضع العرض التجريبي الصريح فقط — إضافة محلية مع تنبيه واضح
+      sampleCustomers.add(newCustomer);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ar
+                ? 'أُضيف العميل محلياً (وضع تجريبي) — لم يُحفظ على الخادم'
+                : 'Customer added locally (demo mode) — not saved to the server',
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    // وضع التكامل: يُعرض الخطأ الحقيقي — لا إضافة محلية ولا رسالة نجاح مضللة
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+    return;
+  }
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        ar
+            ? 'تمت إضافة العميل "${newCustomer.nameAr}" بنجاح'
+            : 'Customer "${newCustomer.name}" added successfully',
+      ),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       duration: const Duration(seconds: 2),
-    ));
-    MainShell.of(context)?.goTo(1);
-  }
+    ),
+  );
+  MainShell.of(context)?.goTo(1);
+  await CustomersScreen.of(context)?.refresh();
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
@@ -327,7 +490,9 @@ class _MetricCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+          border: Border.all(
+            color: AppColors.outlineVariant.withValues(alpha: 0.4),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -394,17 +559,16 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: AppColors.outlineVariant.withValues(alpha: 0.5),
+          ),
         ),
         child: Column(
           children: [
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(height: 8),
@@ -448,10 +612,22 @@ class _InvoiceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color bg, Color fg) = switch (status) {
-      'PAID' => (AppColors.tertiaryContainer.withValues(alpha: 0.15), AppColors.tertiary),
-      'PENDING' => (AppColors.errorContainer.withValues(alpha: 0.2), AppColors.error),
-      'OVERDUE' => (AppColors.errorContainer.withValues(alpha: 0.2), AppColors.error),
-      'SENT' => (AppColors.secondaryContainer.withValues(alpha: 0.3), AppColors.secondary),
+      'PAID' => (
+        AppColors.tertiaryContainer.withValues(alpha: 0.15),
+        AppColors.tertiary,
+      ),
+      'PENDING' => (
+        AppColors.errorContainer.withValues(alpha: 0.2),
+        AppColors.error,
+      ),
+      'OVERDUE' => (
+        AppColors.errorContainer.withValues(alpha: 0.2),
+        AppColors.error,
+      ),
+      'SENT' => (
+        AppColors.secondaryContainer.withValues(alpha: 0.3),
+        AppColors.secondary,
+      ),
       _ => (AppColors.surfaceContainer, AppColors.onSurfaceVariant),
     };
 
@@ -462,9 +638,7 @@ class _InvoiceRow extends StatelessWidget {
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(
-                  bottom: BorderSide(
-                      color: Color(0x1A000000))),
+              : const Border(bottom: BorderSide(color: Color(0x1A000000))),
         ),
         child: Row(
           children: [
@@ -479,35 +653,52 @@ class _InvoiceRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(id,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppColors.onSurface)),
-                  Text(customer,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.secondary)),
+                  Text(
+                    id,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  Text(
+                    customer,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.secondary,
+                    ),
+                  ),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(amount,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppColors.onSurface)),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.onSurface,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                      color: bg, borderRadius: BorderRadius.circular(20)),
+                    color: bg,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Text(
                     statusLabel.toUpperCase(),
                     style: TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w700, color: fg),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: fg,
+                    ),
                   ),
                 ),
               ],

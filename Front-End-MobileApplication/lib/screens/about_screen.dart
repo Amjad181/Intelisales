@@ -14,14 +14,29 @@ class AboutScreen extends StatelessWidget {
     final features = ar
         ? const [
             ('إدارة العملاء والزيارات الميدانية', Icons.group_outlined),
-            ('إنشاء فواتير بأمر صوتي مدعوم بالذكاء الاصطناعي', Icons.mic_none_outlined),
-            ('اقتراحات منتجات ذكية أثناء بناء الفاتورة', Icons.auto_awesome_outlined),
-            ('معاينة الفواتير وإرسالها كملف PDF', Icons.picture_as_pdf_outlined),
+            (
+              'إنشاء فواتير بأمر صوتي مدعوم بالذكاء الاصطناعي',
+              Icons.mic_none_outlined,
+            ),
+            (
+              'اقتراحات منتجات ذكية أثناء بناء الفاتورة',
+              Icons.auto_awesome_outlined,
+            ),
+            (
+              'معاينة الفواتير وإرسالها كملف PDF',
+              Icons.picture_as_pdf_outlined,
+            ),
           ]
         : const [
             ('Manage customers and field visits', Icons.group_outlined),
-            ('Build invoices with AI-powered voice commands', Icons.mic_none_outlined),
-            ('Smart product suggestions while building invoices', Icons.auto_awesome_outlined),
+            (
+              'Build invoices with AI-powered voice commands',
+              Icons.mic_none_outlined,
+            ),
+            (
+              'Smart product suggestions while building invoices',
+              Icons.auto_awesome_outlined,
+            ),
             ('Preview and send invoices as PDF', Icons.picture_as_pdf_outlined),
           ];
 
@@ -38,7 +53,10 @@ class AboutScreen extends StatelessWidget {
           ),
           title: Text(
             ar ? 'حول التطبيق' : 'About',
-            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
           ),
         ),
         body: ListView(
@@ -78,7 +96,10 @@ class AboutScreen extends StatelessWidget {
             Text(
               ar ? 'الإصدار $_version' : 'Version $_version',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 20),
             Container(
@@ -86,13 +107,19 @@ class AboutScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                ),
               ),
               child: Text(
                 ar
                     ? 'رفيق مندوب المبيعات الميداني — يساعدك على متابعة العملاء وزياراتهم، وبناء الفواتير بسرعة، وزيادة المبيعات باقتراحات ذكية.'
                     : 'A companion app for field sales reps — track customers and visits, build invoices quickly, and boost sales with smart suggestions.',
-                style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.onSurface),
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.6,
+                  color: AppColors.onSurface,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -103,7 +130,9 @@ class AboutScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: AppColors.outlineVariant.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -112,7 +141,10 @@ class AboutScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         f.$1,
-                        style: const TextStyle(fontSize: 13.5, color: AppColors.onSurface),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: AppColors.onSurface,
+                        ),
                       ),
                     ),
                   ],
@@ -123,7 +155,10 @@ class AboutScreen extends StatelessWidget {
             Text(
               '© 2024 ${ar ? 'إنتيلي سيلز' : 'IntelliSales'} — v$_version',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant),
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.onSurfaceVariant,
+              ),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../services/api_client.dart';
 import '../theme/app_colors.dart';
 import 'main_shell.dart';
 
@@ -11,26 +12,79 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePass = true;
   bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    UserSession.of(context).setName(_nameCtrl.text.trim());
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainShell()),
+    final ar = AppLocale.of(context).isArabic;
+    final email = _emailCtrl.text.trim();
+    final password = _passCtrl.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(
+        () => _error = ar
+            ? 'الرجاء إدخال البريد الإلكتروني وكلمة المرور'
+            : 'Please enter your email and password',
+      );
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      await UserSession.of(
+        context,
+      ).login(email, password, rememberMe: _rememberMe);
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// لا يوجد endpoint لاستعادة كلمة المرور في عقد الباك اند — بدل رابط ميت،
+  /// يُعرض حوار يوجّه المستخدم لمدير النظام (حسب خطة التكامل).
+  void _showContactAdminDialog(bool ar) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(ar ? 'التواصل مع مدير النظام' : 'Contact Admin'),
+          content: Text(
+            ar
+                ? 'لا تتوفر استعادة كلمة المرور ذاتياً. تواصل مع مدير النظام لإعادة تعيين كلمة المرور أو إنشاء حساب جديد.'
+                : 'Self-service password reset is not available. Please contact your system administrator to reset your password or create an account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(ar ? 'حسناً' : 'OK'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -73,7 +127,10 @@ class _LoginScreenState extends State<LoginScreen> {
             // Main content
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 48),
@@ -93,7 +150,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(18),
-                        child: Image.asset('assets/icon/icon.png', fit: BoxFit.cover),
+                        child: Image.asset(
+                          'assets/icon/icon.png',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -108,7 +168,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (ar)
                       const Text(
                         'IntelliSales',
-                        style: TextStyle(fontSize: 14, color: AppColors.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     const SizedBox(height: 36),
                     // Login card
@@ -117,7 +180,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: AppColors.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.05),
@@ -151,15 +218,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // Representative name label
-                          _Label(text: ar ? 'اسم المندوب' : 'Representative Name'),
+                          // Email label
+                          _Label(text: ar ? 'البريد الإلكتروني' : 'Email'),
                           const SizedBox(height: 8),
                           _InputField(
-                            controller: _nameCtrl,
-                            hint: ar ? 'أدخل اسمك' : 'Enter your name',
-                            prefixIcon: Icons.person_outline,
-                            keyboardType: TextInputType.name,
-                            textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
+                            controller: _emailCtrl,
+                            hint: ar
+                                ? 'أدخل بريدك الإلكتروني'
+                                : 'Enter your email',
+                            prefixIcon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            textDirection: TextDirection.ltr,
                           ),
                           const SizedBox(height: 16),
 
@@ -169,13 +238,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: ar
                                 ? [
                                     GestureDetector(
-                                      onTap: () {},
+                                      onTap: () => _showContactAdminDialog(ar),
                                       child: const Text(
                                         'نسيت كلمة المرور؟',
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w600),
+                                          fontSize: 12,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                     const _Label(text: 'كلمة المرور'),
@@ -183,13 +253,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : [
                                     const _Label(text: 'Password'),
                                     GestureDetector(
-                                      onTap: () {},
+                                      onTap: () => _showContactAdminDialog(ar),
                                       child: const Text(
                                         'Forgot password?',
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w600),
+                                          fontSize: 12,
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -225,14 +296,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                           setState(() => _rememberMe = v!),
                                       activeColor: AppColors.primary,
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(4)),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       'تذكرني على هذا الجهاز',
                                       style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.onSurfaceVariant),
+                                        fontSize: 14,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
                                     ),
                                   ]
                                 : [
@@ -242,18 +315,46 @@ class _LoginScreenState extends State<LoginScreen> {
                                           setState(() => _rememberMe = v!),
                                       activeColor: AppColors.primary,
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(4)),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       'Remember me on this device',
                                       style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppColors.onSurfaceVariant),
+                                        fontSize: 14,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
                                     ),
                                   ],
                           ),
                           const SizedBox(height: 20),
+
+                          if (_error != null) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.errorContainer,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                _error!,
+                                textAlign: ar
+                                    ? TextAlign.right
+                                    : TextAlign.left,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.onErrorContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
                           // Login button
                           SizedBox(
@@ -264,7 +365,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 elevation: 0,
                               ),
                               child: _loading
@@ -272,16 +374,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                       width: 24,
                                       height: 24,
                                       child: CircularProgressIndicator(
-                                          color: Colors.white, strokeWidth: 2),
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           ar ? 'تسجيل الدخول' : 'Sign In',
                                           style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                         const SizedBox(width: 8),
                                         Icon(
@@ -302,13 +408,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Contact admin
                     RichText(
                       text: TextSpan(
-                        text: ar ? 'ليس لديك حساب؟ ' : "Don't have an account? ",
+                        text: ar
+                            ? 'ليس لديك حساب؟ '
+                            : "Don't have an account? ",
                         style: const TextStyle(
-                            fontSize: 14, color: AppColors.onSurfaceVariant),
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                         children: [
                           WidgetSpan(
                             child: GestureDetector(
-                              onTap: () {},
+                              onTap: () => _showContactAdminDialog(ar),
                               child: Text(
                                 ar ? 'اتصل بمدير النظام' : 'Contact Admin',
                                 style: const TextStyle(
@@ -328,25 +438,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.language,
-                            size: 16, color: AppColors.onSurfaceVariant),
+                        const Icon(
+                          Icons.language,
+                          size: 16,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         GestureDetector(
                           onTap: loc.toggleLanguage,
                           child: Text(
                             ar ? 'العربية' : 'Arabic',
                             style: const TextStyle(
-                                fontSize: 12, color: AppColors.onSurfaceVariant),
+                              fontSize: 12,
+                              color: AppColors.onSurfaceVariant,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 20),
-                        const Icon(Icons.help_outline,
-                            size: 16, color: AppColors.onSurfaceVariant),
+                        const Icon(
+                          Icons.help_outline,
+                          size: 16,
+                          color: AppColors.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           ar ? 'مركز المساعدة' : 'Help Center',
                           style: const TextStyle(
-                              fontSize: 12, color: AppColors.onSurfaceVariant),
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -354,7 +474,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       '© 2024 IntelliSales. ${ar ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}',
                       style: const TextStyle(
-                          fontSize: 11, color: AppColors.onSurfaceVariant),
+                        fontSize: 11,
+                        color: AppColors.onSurfaceVariant,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -431,8 +553,10 @@ class _InputField extends StatelessWidget {
               textDirection: textDirection,
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle:
-                    const TextStyle(color: AppColors.outlineVariant, fontSize: 15),
+                hintStyle: const TextStyle(
+                  color: AppColors.outlineVariant,
+                  fontSize: 15,
+                ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,

@@ -22,14 +22,14 @@ class Customer {
   final String paymentType;
   final String customerType;
   final String notes;
+  final String email;
 
   const Customer({
     required this.id,
     required this.name,
     required this.nameAr,
     required this.contact,
-    required
-    this.contactAr,
+    required this.contactAr,
     required this.role,
     required this.roleAr,
     required this.lastVisit,
@@ -44,7 +44,49 @@ class Customer {
     this.paymentType = '',
     this.customerType = '',
     this.notes = '',
+    this.email = '',
   });
+
+  /// يبني عميلاً من استجابة الباك اند (GET/POST /customers). لا يوجد اسم
+  /// عربي منفصل من الباك اند، فتُستخدم نفس القيمة للعرض بالعربي والإنجليزي
+  /// حتى تبقى كل الشاشات التي تفرّق بين name/nameAr تعمل دون تعديل.
+  factory Customer.fromApi(Map<String, dynamic> json) {
+    final name = (json['name'] as String?) ?? '';
+    final contactName = (json['contactName'] as String?) ?? '';
+    return Customer(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      name: name,
+      nameAr: name,
+      contact: contactName,
+      contactAr: contactName,
+      role: '',
+      roleAr: '',
+      lastVisit: '',
+      lastVisitAr: '',
+      status: (json['status'] as String?) ?? '',
+      phone1: (json['phone'] as String?) ?? '',
+      address: (json['address'] as String?) ?? '',
+      assignedUser: (json['assignedSalesRep'] as String?) ?? '',
+      paymentType: (json['paymentType'] as String?) ?? '',
+      customerType: (json['customerType'] as String?) ?? '',
+      notes: (json['notes'] as String?) ?? '',
+      email: (json['email'] as String?) ?? '',
+    );
+  }
+
+  /// الشكل الذي يتوقعه الباك اند عند الإنشاء/التعديل (POST/PATCH /customers).
+  Map<String, dynamic> toApi() => {
+    'name': name,
+    'contactName': contact,
+    'phone': phone1,
+    'email': email,
+    'address': address,
+    'notes': notes,
+    'assignedSalesRep': assignedUser,
+    'customerType': customerType,
+    'paymentType': paymentType,
+    'status': status,
+  };
 }
 
 class Invoice {
@@ -55,6 +97,14 @@ class Invoice {
   final String date;
   final String dateAr;
   final String status; // 'PAID' | 'PENDING' | 'DRAFT' | 'OVERDUE' | 'SENT'
+  final List<InvoiceItem> items;
+  final String? customerId;
+  final String invoiceStatus;
+  final String paymentStatus;
+  final double totalAmount;
+  final double paidAmount;
+  final double remainingAmount;
+  final String currency;
 
   const Invoice({
     required this.id,
@@ -64,7 +114,81 @@ class Invoice {
     required this.date,
     required this.dateAr,
     required this.status,
+    this.items = const [],
+    this.customerId,
+    this.invoiceStatus = '',
+    this.paymentStatus = '',
+    this.totalAmount = 0,
+    this.paidAmount = 0,
+    this.remainingAmount = 0,
+    this.currency = 'SYP',
   });
+
+  /// يبني فاتورة من استجابة الباك اند. القيم الدقيقة لـ invoiceStatus/
+  /// paymentStatus لم تُحدَّد بالتفصيل في العقد، لذا تُشتق حالة عرض واحدة
+  /// (status) بأفضل تخمين متوافق مع شاشات الفواتير الحالية — راجع
+  /// INTEGRATION_NOTES.md لتأكيدها مع الباك اند لاحقاً.
+  factory Invoice.fromApi(Map<String, dynamic> json) {
+    final invoiceStatus = ((json['invoiceStatus'] as String?) ?? '')
+        .toUpperCase();
+    final paymentStatus = ((json['paymentStatus'] as String?) ?? '')
+        .toUpperCase();
+    final dueDate = DateTime.tryParse((json['dueDate'] as String?) ?? '');
+    final isOverdue =
+        dueDate != null &&
+        dueDate.isBefore(DateTime.now()) &&
+        paymentStatus != 'PAID';
+
+    final String legacyStatus;
+    if (invoiceStatus == 'DRAFT') {
+      legacyStatus = 'DRAFT';
+    } else if (paymentStatus == 'PAID') {
+      legacyStatus = 'PAID';
+    } else if (isOverdue) {
+      legacyStatus = 'OVERDUE';
+    } else {
+      legacyStatus = 'SENT';
+    }
+
+    final customerSnapshot = json['customerSnapshot'] as Map<String, dynamic>?;
+    final customerName = (customerSnapshot?['name'] as String?) ?? '';
+
+    final rawItems = (json['items'] as List?) ?? [];
+    final items = rawItems.map((e) {
+      final m = e as Map<String, dynamic>;
+      final name = (m['productName'] ?? m['name'] ?? '') as String;
+      return InvoiceItem(
+        productId: (m['productId'] ?? m['product'])?.toString(),
+        name: name,
+        nameAr: name,
+        qty: ((m['quantity'] ?? m['qty']) as num?)?.toInt() ?? 0,
+        unitPrice: ((m['unitPrice'] ?? m['price']) as num?)?.toDouble() ?? 0,
+        icon: Icons.inventory_2_outlined,
+      );
+    }).toList();
+
+    final total = ((json['totalAmount'] as num?) ?? 0).toDouble();
+
+    return Invoice(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      customer: customerName,
+      customerAr: customerName,
+      amount: total,
+      date: dueDate != null ? 'Due: ${dueDate.toLocal()}'.split(' ').first : '',
+      dateAr: dueDate != null
+          ? 'الاستحقاق: ${dueDate.toLocal()}'.split(' ').first
+          : '',
+      status: legacyStatus,
+      items: items,
+      customerId: (json['customerId'] ?? customerSnapshot?['id'])?.toString(),
+      invoiceStatus: invoiceStatus,
+      paymentStatus: paymentStatus,
+      totalAmount: total,
+      paidAmount: ((json['paidAmount'] as num?) ?? 0).toDouble(),
+      remainingAmount: ((json['remainingAmount'] as num?) ?? 0).toDouble(),
+      currency: (json['currency'] as String?) ?? 'SYP',
+    );
+  }
 }
 
 class VisitResultOption {
@@ -96,8 +220,10 @@ class VisitInfo {
   });
 
   String resultLabel(bool ar) {
-    final opt = visitResultOptions.firstWhere((o) => o.key == resultKey,
-        orElse: () => visitResultOptions.last);
+    final opt = visitResultOptions.firstWhere(
+      (o) => o.key == resultKey,
+      orElse: () => visitResultOptions.last,
+    );
     return ar ? opt.labelAr : opt.label;
   }
 }
@@ -128,6 +254,11 @@ class Product {
   final String nameAr;
   final double price;
   final IconData icon;
+  final String productCode;
+  final String unit;
+  final String currency;
+  final double taxRate;
+  final String status;
 
   const Product({
     required this.id,
@@ -135,7 +266,90 @@ class Product {
     required this.nameAr,
     required this.price,
     required this.icon,
+    this.productCode = '',
+    this.unit = '',
+    this.currency = 'SYP',
+    this.taxRate = 0,
+    this.status = '',
   });
+
+  /// يبني منتجاً من استجابة الباك اند (GET /products أو /products/price-list).
+  /// لا يوجد أيقونة من الباك اند، فتُستخدم أيقونة افتراضية للعرض فقط.
+  factory Product.fromApi(Map<String, dynamic> json) {
+    final name = (json['name'] as String?) ?? '';
+    return Product(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      name: name,
+      nameAr: name,
+      price: ((json['basePrice'] ?? json['price']) as num?)?.toDouble() ?? 0,
+      icon: Icons.inventory_2_outlined,
+      productCode: (json['productCode'] ?? json['sku'] ?? '').toString(),
+      unit: (json['unit'] as String?) ?? '',
+      currency: (json['currency'] as String?) ?? 'SYP',
+      taxRate: (json['taxRate'] as num?)?.toDouble() ?? 0,
+      status: (json['status'] as String?) ?? '',
+    );
+  }
+
+  /// يبني منتجاً من عنصر priceList.items (مسار
+  /// GET /price-lists/customer-type/:customerType): العنصر يحمل المنتج
+  /// متداخلاً تحت product مع سعر نوع العميل على مستوى العنصر نفسه.
+  factory Product.fromPriceListItem(Map<String, dynamic> item) {
+    final productJson = (item['product'] is Map<String, dynamic>)
+        ? item['product'] as Map<String, dynamic>
+        : item;
+    final base = Product.fromApi(productJson);
+    final itemPrice = (item['price'] as num?)?.toDouble();
+    final itemCurrency = item['currency'] as String?;
+    final itemTaxRate = (item['taxRate'] as num?)?.toDouble();
+    return Product(
+      id: base.id,
+      name: base.name,
+      nameAr: base.nameAr,
+      price: itemPrice ?? base.price,
+      icon: base.icon,
+      productCode: base.productCode,
+      unit: base.unit,
+      currency: itemCurrency ?? base.currency,
+      taxRate: itemTaxRate ?? base.taxRate,
+      status: base.status,
+    );
+  }
+}
+
+// ── قيم الباك اند الثابتة (Customer.customerType / Customer.paymentType) ─────
+//
+// هذه القيم جزء من عقد الباك اند (وليست نصوصاً محلية قابلة للترجمة فقط)،
+// لذا تُخزَّن كقيمة ثابتة (apiValue) بينما تُترجم فقط للعرض عبر label(ar).
+
+enum CustomerType { retail, wholesale, keyAccount }
+
+extension CustomerTypeApi on CustomerType {
+  String get apiValue => switch (this) {
+    CustomerType.retail => 'Retail',
+    CustomerType.wholesale => 'Wholesale',
+    CustomerType.keyAccount => 'KeyAccount',
+  };
+
+  String label(bool ar) => switch (this) {
+    CustomerType.retail => ar ? 'تجزئة' : 'Retail',
+    CustomerType.wholesale => ar ? 'جملة' : 'Wholesale',
+    CustomerType.keyAccount => ar ? 'حساب رئيسي' : 'Key Account',
+  };
+}
+
+enum PaymentType { cash, credit }
+
+extension PaymentTypeApi on PaymentType {
+  String get apiValue => switch (this) {
+    PaymentType.cash => 'Cash',
+    PaymentType.credit => 'Credit',
+  };
+
+  String label(bool ar) => switch (this) {
+    PaymentType.cash => ar ? 'نقدي' : 'Cash',
+    PaymentType.credit => ar ? 'آجل' : 'Credit',
+  };
 }
 
 // ── Sample Data ──────────────────────────────────────────────────────────────
@@ -219,21 +433,21 @@ final List<Invoice> sampleInvoices = [
 ];
 
 List<InvoiceItem> defaultInvoiceItems() => [
-      InvoiceItem(
-        name: 'Industrial Storage Rack',
-        nameAr: 'رف تخزين صناعي',
-        qty: 2,
-        unitPrice: 240.00,
-        icon: Icons.inventory_2_outlined,
-      ),
-      InvoiceItem(
-        name: 'Installation Fee',
-        nameAr: 'رسوم التركيب',
-        qty: 1,
-        unitPrice: 150.00,
-        icon: Icons.construction_outlined,
-      ),
-    ];
+  InvoiceItem(
+    name: 'Industrial Storage Rack',
+    nameAr: 'رف تخزين صناعي',
+    qty: 2,
+    unitPrice: 240.00,
+    icon: Icons.inventory_2_outlined,
+  ),
+  InvoiceItem(
+    name: 'Installation Fee',
+    nameAr: 'رسوم التركيب',
+    qty: 1,
+    unitPrice: 150.00,
+    icon: Icons.construction_outlined,
+  ),
+];
 
 final List<Product> sampleProducts = [
   const Product(

@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Development-only minimal ATS exception: allow plain-HTTP to hosts
+		     on the local network (the Module 12 backend on localhost / LAN).
+		     Does not disable ATS for arbitrary internet hosts. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Used to take your profile photo.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

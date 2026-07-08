@@ -44,5 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Local secrets - keep API keys out of git; copy api_config.example.dart instead
-/lib/config/api_config.dart
+# Private API keys — never commit (see lib/config/api_keys.example.dart)
+lib/config/api_keys.dart

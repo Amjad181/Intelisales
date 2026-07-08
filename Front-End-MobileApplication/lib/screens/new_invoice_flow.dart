@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import 'main_shell.dart';
+import '../data/sample_data.dart';
+import 'customer_picker_screen.dart';
+import 'new_invoice_screen.dart';
 
-// ── New invoice: every invoice must be backed by a visit outcome ────────────
+// ── New invoice: direct draft creation ──────────────────────────────────────
 //
-// Invoices are never created ad-hoc. The rep is always routed to the
-// Activity/Visits screen first, picks the relevant scheduled visit, and only
-// recording its outcome as "Effective" (sale made) opens the invoice screen.
+// حسب خطة التكامل (P1): إنشاء مسودة الفاتورة مباشرة باختيار عميل ثم
+// المنتجات، دون اشتراط زيارة أولاً. مسار الزيارات ما زال متاحاً كاختصار من
+// شاشة النشاط (تسجيل نتيجة "فعّالة" يفتح الفاتورة كما كان).
 
-void startNewInvoiceFlow(BuildContext context, bool ar) {
-  MainShell.of(context)?.goToActivity();
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(
-      ar
-          ? 'اختر الزيارة من المخطط وسجّل نتيجتها كـ"فعّالة" لإنشاء الفاتورة'
-          : 'Pick the visit from the plan and record its outcome as "Effective" to create the invoice',
-    ),
-    backgroundColor: AppColors.primary,
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    duration: const Duration(seconds: 4),
-  ));
+Future<void> startNewInvoiceFlow(BuildContext context, bool ar) async {
+  final customer = await Navigator.push<Customer>(
+    context,
+    MaterialPageRoute(builder: (_) => const CustomerPickerScreen()),
+  );
+  if (customer == null || !context.mounted) return;
+  await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => NewInvoiceScreen(customer: customer)),
+  );
 }

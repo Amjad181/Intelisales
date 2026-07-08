@@ -25,15 +25,11 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
   static const _regionsEn = ['Cairo', 'Alexandria', 'Giza', 'Other'];
   static const _regionsAr = ['القاهرة', 'الإسكندرية', 'الجيزة', 'أخرى'];
   static const _assignedUsers = ['Ahmed Salah', 'Sara Ali', 'Khaled Ibrahim'];
-  static const _paymentTypesEn = ['Cash', 'Credit', 'Bank Transfer'];
-  static const _paymentTypesAr = ['نقدي', 'آجل', 'تحويل بنكي'];
-  static const _customerTypesEn = ['Retail', 'Wholesale'];
-  static const _customerTypesAr = ['تجزئة', 'جملة'];
 
   int _regionIndex = 0;
   String _assignedUser = _assignedUsers.first;
-  int _paymentIndex = 0;
-  int _customerTypeIndex = 0;
+  PaymentType _paymentType = PaymentType.cash;
+  CustomerType _customerType = CustomerType.retail;
 
   @override
   void dispose() {
@@ -83,11 +79,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       address: _addressCtrl.text.trim(),
       region: ar ? _regionsAr[_regionIndex] : _regionsEn[_regionIndex],
       assignedUser: _assignedUser,
-      paymentType:
-          ar ? _paymentTypesAr[_paymentIndex] : _paymentTypesEn[_paymentIndex],
-      customerType: ar
-          ? _customerTypesAr[_customerTypeIndex]
-          : _customerTypesEn[_customerTypeIndex],
+      paymentType: _paymentType.apiValue,
+      customerType: _customerType.apiValue,
       notes: _notesCtrl.text.trim(),
     );
 
@@ -102,8 +95,7 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       textDirection: ar ? TextDirection.rtl : TextDirection.ltr,
       child: Dialog(
         backgroundColor: Colors.white,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420, maxHeight: 640),
           child: Padding(
@@ -115,11 +107,14 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(ar ? 'إضافة عميل' : 'Add customer',
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.onSurface)),
+                    Text(
+                      ar ? 'إضافة عميل' : 'Add customer',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close, size: 20),
                       onPressed: () => Navigator.pop(context),
@@ -133,7 +128,9 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       ? 'سيتم توليد رقم تعريف جديد تلقائياً.'
                       : 'New ID will be Auto-generated.',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.onSurfaceVariant),
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
@@ -188,17 +185,24 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                         const SizedBox(height: 14),
                         _Dropdown(
                           label: ar ? 'نوع الدفع' : 'Payment Type',
-                          value: _paymentIndex,
-                          items: ar ? _paymentTypesAr : _paymentTypesEn,
-                          onChanged: (i) => setState(() => _paymentIndex = i),
+                          value: PaymentType.values.indexOf(_paymentType),
+                          items: [
+                            for (final t in PaymentType.values) t.label(ar),
+                          ],
+                          onChanged: (i) => setState(
+                            () => _paymentType = PaymentType.values[i],
+                          ),
                         ),
                         const SizedBox(height: 14),
                         _Dropdown(
                           label: ar ? 'نوع الزبون' : 'Customer Type',
-                          value: _customerTypeIndex,
-                          items: ar ? _customerTypesAr : _customerTypesEn,
-                          onChanged: (i) =>
-                              setState(() => _customerTypeIndex = i),
+                          value: CustomerType.values.indexOf(_customerType),
+                          items: [
+                            for (final t in CustomerType.values) t.label(ar),
+                          ],
+                          onChanged: (i) => setState(
+                            () => _customerType = CustomerType.values[i],
+                          ),
                         ),
                         const SizedBox(height: 14),
                         _Field(
@@ -218,10 +222,10 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.onSurfaceVariant,
-                        side: const BorderSide(
-                            color: AppColors.outlineVariant),
+                        side: const BorderSide(color: AppColors.outlineVariant),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: Text(ar ? 'إلغاء' : 'Cancel'),
                     ),
@@ -232,7 +236,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: Text(ar ? 'إنشاء' : 'Create'),
                     ),
@@ -267,11 +272,14 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -280,8 +288,10 @@ class _Field extends StatelessWidget {
           decoration: InputDecoration(
             isDense: true,
             errorText: errorText,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
         ),
       ],
@@ -307,11 +317,14 @@ class _Dropdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),

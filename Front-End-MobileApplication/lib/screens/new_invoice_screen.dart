@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
+import '../config/api_config.dart';
 import '../main.dart';
 import '../theme/app_colors.dart';
 import '../data/sample_data.dart';
 import '../utils/currency.dart';
+import '../services/api_client.dart';
+import '../services/invoice_service.dart';
+import '../services/product_service.dart';
 import '../services/voice_invoice_service.dart';
 import '../services/product_suggestion_service.dart';
 import '../widgets/product_suggestions_section.dart';
@@ -37,6 +41,11 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
 
   List<ProductSuggestion> _suggestions = [];
   bool _loadingSuggestions = false;
+  bool _submitting = false;
+
+  /// يُستخدم لتمييز مصدر الفاتورة عند الإرسال للباك اند (source/voiceText).
+  String _source = 'MANUAL';
+  String? _voiceText;
 
   static const double _taxRate = 0.0;
   static const double _discountRate = 0.0;
@@ -131,22 +140,53 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
     }
   }
 
+  /// كتالوج المنتجات الحقيقي من الباك اند — تُطابق عليه أصناف الصوت حتى
+  /// تحمل productId صالحاً يقبله POST /invoices (لا مطابقة على عينات محلية).
+  List<Product>? _catalog;
+
+  Future<List<Product>> _loadCatalog() async {
+    final cached = _catalog;
+    if (cached != null) return cached;
+    final customerType = widget.customer?.customerType;
+    final products = customerType != null && customerType.isNotEmpty
+        ? await ProductService.priceListByCustomerType(customerType)
+        : (await ProductService.priceList()).items;
+    _catalog = products;
+    return products;
+  }
+
   Future<void> _processText(String text) async {
+    final ar = AppLocale.of(context).isArabic;
     setState(() => _processing = true);
     try {
-      final newItems = await VoiceInvoiceService.parseItems(text);
+      final catalog = await _loadCatalog();
       if (!mounted) return;
-      if (newItems.isEmpty) {
-        _showError('لم يُتعرف على أصناف، حاول مجدداً');
+      final result = VoiceInvoiceService.parseItems(text, catalog: catalog);
+      if (result.items.isEmpty) {
+        _showError(
+          ar
+              ? 'لم يُتعرف على أصناف مطابقة للكتالوج، حاول مجدداً أو استخدم الإدخال اليدوي'
+              : 'No catalog items recognized — try again or use manual entry',
+        );
       } else {
-        setState(() => _items.addAll(newItems));
-        _showToast(newItems);
+        setState(() {
+          _items.addAll(result.items);
+          _source = 'VOICE_TEXT';
+          _voiceText = text;
+        });
+        _showToast(result.items);
         _refreshSuggestions();
       }
-    } catch (e) {
+      if (result.unmatched.isNotEmpty && mounted) {
+        _showError(
+          ar
+              ? 'لم يُتعرف على: ${result.unmatched.join('، ')} — أضفها من الإدخال اليدوي'
+              : 'Not recognized: ${result.unmatched.join(', ')} — add them via manual entry',
+        );
+      }
+    } on ApiException catch (e) {
       if (!mounted) return;
-      debugPrint('Parse error: $e');
-      _showError(e.toString());
+      _showError(e.message);
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -228,10 +268,78 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
     _refreshSuggestions();
   }
 
+  /// ينشئ مسودة الفاتورة على الباك اند (الذي يحسب الأسعار والضرائب
+  /// والمجاميع)، ثم ينتقل لمعاينة الفاتورة. في وضع التكامل فشل الإنشاء
+  /// يُظهر الخطأ ويبقي المستخدم هنا — لا معاينة محلية غير محفوظة إلا في
+  /// وضع العرض التجريبي الصريح (DEMO_MODE=true).
+  Future<void> _previewAndSend() async {
+    final ar = AppLocale.of(context).isArabic;
+    final customer = widget.customer;
+    String? createdInvoiceId;
+
+    if (_items.isEmpty) {
+      _showError(ar ? 'أضف صنفاً واحداً على الأقل' : 'Add at least one item');
+      return;
+    }
+
+    // العقد يتطلب productId صالحاً لكل صنف — أصناف بلا معرّف لا يقبلها الخادم
+    final missingIds = _items.where(
+      (i) => i.productId == null || i.productId!.isEmpty,
+    );
+    if (missingIds.isNotEmpty && !ApiConfig.demoMode) {
+      _showError(
+        ar
+            ? 'أصناف غير مرتبطة بالكتالوج: ${missingIds.map((i) => i.nameAr).join('، ')}'
+            : 'Items not linked to the catalog: ${missingIds.map((i) => i.name).join(', ')}',
+      );
+      return;
+    }
+
+    if (customer != null && customer.id.isNotEmpty) {
+      setState(() => _submitting = true);
+      try {
+        final invoice = await InvoiceService.createDraft(
+          customerId: customer.id,
+          items: _items,
+          source: _source,
+          voiceText: _voiceText,
+          notes: widget.visitInfo?.notes,
+        );
+        createdInvoiceId = invoice.id;
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        _showError(e.message);
+        setState(() => _submitting = false);
+        if (!ApiConfig.demoMode) return; // لا معاينة محلية في وضع التكامل
+      } finally {
+        if (mounted) setState(() => _submitting = false);
+      }
+    } else if (!ApiConfig.demoMode) {
+      _showError(ar ? 'اختر عميلاً أولاً' : 'Select a customer first');
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvoicePdfScreen(
+          items: _items,
+          customer: widget.customer,
+          visitInfo: widget.visitInfo,
+          invoiceId: createdInvoiceId,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openManualEntry() async {
     final added = await Navigator.push<List<InvoiceItem>>(
       context,
-      MaterialPageRoute(builder: (_) => const ProductCatalogScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            ProductCatalogScreen(customerType: widget.customer?.customerType),
+      ),
     );
     if (added != null && added.isNotEmpty && mounted) {
       setState(() => _items.addAll(added));
@@ -259,14 +367,16 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
 
   void _addSuggestion(ProductSuggestion s) {
     setState(() {
-      _items.add(InvoiceItem(
-        productId: s.productId,
-        name: s.name,
-        nameAr: s.nameAr,
-        qty: 1,
-        unitPrice: s.price,
-        icon: s.icon,
-      ));
+      _items.add(
+        InvoiceItem(
+          productId: s.productId,
+          name: s.name,
+          nameAr: s.nameAr,
+          qty: 1,
+          unitPrice: s.price,
+          icon: s.icon,
+        ),
+      );
     });
     _refreshSuggestions();
   }
@@ -645,52 +755,13 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
                   ),
                   const SizedBox(height: 8),
                   _SummaryRow(
-                    label: ar ? 'الضريبة (8٪)' : 'Tax (8%)',
+                    label: ar ? 'الضريبة' : 'Tax',
                     value: formatSYP(_tax, ar),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            ar ? 'الخصم' : 'Discount',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.tertiary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'SALE10',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.tertiary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '-${formatSYP(_discount, ar)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.error,
-                        ),
-                      ),
-                    ],
+                  _SummaryRow(
+                    label: ar ? 'الخصم' : 'Discount',
+                    value: '-${formatSYP(_discount, ar)}',
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 10),
@@ -700,7 +771,9 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        ar ? 'إجمالي المبلغ' : 'Total Amount',
+                        ar
+                            ? 'إجمالي المبلغ (تقديري)'
+                            : 'Total Amount (estimated)',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -736,17 +809,17 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen>
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => InvoicePdfScreen(
-                    items: _items,
-                    customer: widget.customer,
-                    visitInfo: widget.visitInfo,
-                  ),
-                ),
-              ),
-              icon: const Icon(Icons.send_outlined, size: 18),
+              onPressed: _submitting ? null : _previewAndSend,
+              icon: _submitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.send_outlined, size: 18),
               label: Text(
                 ar ? 'معاينة وإرسال' : 'PREVIEW & SEND',
                 style: const TextStyle(

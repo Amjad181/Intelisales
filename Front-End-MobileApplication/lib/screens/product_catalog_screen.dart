@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 import '../main.dart';
 import '../theme/app_colors.dart';
 import '../data/sample_data.dart';
 import '../utils/currency.dart';
+import '../services/api_client.dart';
+import '../services/product_service.dart';
 import '../services/product_suggestion_service.dart';
+import '../widgets/demo_data_banner.dart';
+import '../widgets/error_retry_view.dart';
 import '../widgets/product_suggestions_section.dart';
 
 class ProductCatalogScreen extends StatefulWidget {
-  const ProductCatalogScreen({super.key});
+  final String? customerType;
+
+  const ProductCatalogScreen({super.key, this.customerType});
 
   @override
   State<ProductCatalogScreen> createState() => _ProductCatalogScreenState();
@@ -18,8 +25,52 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   String _query = '';
   final Map<int, int> _qty = {};
 
+  List<Product> _products = const [];
+  bool _loadingProducts = true;
+  String? _productsError;
+  bool _usingDemoData = false;
+
   List<ProductSuggestion> _suggestions = [];
   bool _loadingSuggestions = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() {
+      _loadingProducts = true;
+      _productsError = null;
+    });
+    try {
+      // نوع عميل معروف → التسعير الدقيق من /price-lists/customer-type/:type
+      // (data.priceList.items حسب العقد)؛ وإلا مسار المُنتقي /products/price-list.
+      final customerType = widget.customerType;
+      final products = customerType != null && customerType.isNotEmpty
+          ? await ProductService.priceListByCustomerType(customerType)
+          : (await ProductService.priceList()).items;
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _usingDemoData = false;
+        _loadingProducts = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (ApiConfig.demoMode) {
+          _products = sampleProducts;
+          _usingDemoData = true;
+        } else {
+          _products = const [];
+          _productsError = e.message;
+        }
+        _loadingProducts = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -29,12 +80,12 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
 
   List<int> _filteredIndexes() {
     if (_query.isEmpty) {
-      return List.generate(sampleProducts.length, (i) => i);
+      return List.generate(_products.length, (i) => i);
     }
     final q = _query.toLowerCase();
     final result = <int>[];
-    for (var i = 0; i < sampleProducts.length; i++) {
-      final p = sampleProducts[i];
+    for (var i = 0; i < _products.length; i++) {
+      final p = _products[i];
       if (p.name.toLowerCase().contains(q) || p.nameAr.contains(_query)) {
         result.add(i);
       }
@@ -55,16 +106,16 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   }
 
   List<InvoiceItem> _selectedAsItems() => _qty.entries.map((e) {
-        final p = sampleProducts[e.key];
-        return InvoiceItem(
-          productId: p.id,
-          name: p.name,
-          nameAr: p.nameAr,
-          qty: e.value,
-          unitPrice: p.price,
-          icon: p.icon,
-        );
-      }).toList();
+    final p = _products[e.key];
+    return InvoiceItem(
+      productId: p.id,
+      name: p.name,
+      nameAr: p.nameAr,
+      qty: e.value,
+      unitPrice: p.price,
+      icon: p.icon,
+    );
+  }).toList();
 
   Future<void> _refreshSuggestions() async {
     final selected = _selectedAsItems();
@@ -82,7 +133,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   }
 
   void _addSuggestion(ProductSuggestion s) {
-    final index = sampleProducts.indexWhere((p) => p.id == s.productId);
+    final index = _products.indexWhere((p) => p.id == s.productId);
     if (index == -1) return;
     _changeQty(index, 1);
   }
@@ -107,7 +158,10 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
           title: Text(
             ar ? 'اختيار المنتجات' : 'Select Products',
             style: const TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 17, color: AppColors.primary),
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              color: AppColors.primary,
+            ),
           ),
         ),
         body: Column(
@@ -120,22 +174,30 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: ar ? 'ابحث عن منتج...' : 'Search products...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.outline),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.outline,
+                  ),
                   filled: true,
                   fillColor: AppColors.surfaceContainerLowest,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                        color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                      color: AppColors.outlineVariant.withValues(alpha: 0.5),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                        color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                      color: AppColors.outlineVariant.withValues(alpha: 0.5),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -151,19 +213,33 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
               ),
             ),
             Expanded(
-              child: indexes.isEmpty
+              child: _loadingProducts
+                  ? const Center(child: CircularProgressIndicator())
+                  : _productsError != null
+                  ? ErrorRetryView(
+                      message: _productsError!,
+                      ar: ar,
+                      onRetry: _loadProducts,
+                    )
+                  : indexes.isEmpty
                   ? Center(
                       child: Text(
                         ar ? 'لا توجد منتجات' : 'No products found',
-                        style: const TextStyle(color: AppColors.onSurfaceVariant),
+                        style: const TextStyle(
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      itemCount: indexes.length,
+                      itemCount: indexes.length + (_usingDemoData ? 1 : 0),
                       itemBuilder: (_, i) {
+                        if (_usingDemoData) {
+                          if (i == 0) return DemoDataBanner(ar: ar);
+                          i -= 1;
+                        }
                         final idx = indexes[i];
-                        final product = sampleProducts[idx];
+                        final product = _products[idx];
                         final qty = _qty[idx] ?? 0;
                         return _ProductRow(
                           product: product,
@@ -185,19 +261,23 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   child: SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, _selectedAsItems()),
+                      onPressed: () =>
+                          Navigator.pop(context, _selectedAsItems()),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: Text(
                         ar
                             ? 'إضافة ($totalSelected) إلى الفاتورة'
                             : 'Add $totalSelected to Invoice',
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -255,15 +335,22 @@ class _ProductRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(ar ? product.nameAr : product.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppColors.onSurface)),
+                Text(
+                  ar ? product.nameAr : product.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.onSurface,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(formatSYP(product.price, ar),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text(
+                  formatSYP(product.price, ar),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -288,22 +375,36 @@ class _ProductRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.remove, color: Colors.white, size: 16),
+                    icon: const Icon(
+                      Icons.remove,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                     onPressed: onDecrement,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     padding: EdgeInsets.zero,
                   ),
                   SizedBox(
                     width: 22,
-                    child: Text('$qty',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      '$qty',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.add, color: Colors.white, size: 16),
                     onPressed: onIncrement,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     padding: EdgeInsets.zero,
                   ),
                 ],

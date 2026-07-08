@@ -1,17 +1,41 @@
-# flutter_application_1
+# IntelliSales Mobile (Flutter)
 
-A new Flutter project.
+Field-sales companion app for the IntelliSales Module 12 backend
+(Arabic/English, sales-representative workflows: customers, invoices,
+voice-assisted invoice entry, visits, dashboard).
 
-## Getting Started
+## Running against the backend
 
-This project is a starting point for a Flutter application.
+The API base URL is a compile-time define — no source edits needed:
 
-A few resources to get you started if this is your first Flutter project:
+```
+# Android emulator (this is also the default)
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api/v1
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+# Physical phone on the same Wi-Fi (backend must run with HOST=0.0.0.0)
+flutter run --dart-define=API_BASE_URL=http://<BACKEND_LAPTOP_LAN_IP>:5000/api/v1
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Defaults when `API_BASE_URL` is not passed: Android → `10.0.2.2:5000`,
+iOS simulator / desktop / web → `localhost:5000`.
+
+### Demo mode (explicit, off by default)
+
+```
+flutter run --dart-define=DEMO_MODE=true
+```
+
+Only in demo mode may screens fall back to local sample data when the
+backend fails — always with a visible "showing demo data" banner. In the
+default integration mode, failures show error/retry states instead.
+
+## Checks
+
+```
+dart format --set-exit-if-changed .
+flutter analyze
+flutter test
+```
+
+See `INTEGRATION_NOTES.md` for the full backend-contract wiring, session
+behavior, remaining gaps, and the real-backend test checklist.

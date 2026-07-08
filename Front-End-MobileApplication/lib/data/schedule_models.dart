@@ -10,10 +10,10 @@ enum ScheduleStatus { planned, confirmed, completed }
 
 extension ScheduleStatusLabel on ScheduleStatus {
   String label(bool ar) => switch (this) {
-        ScheduleStatus.planned => ar ? 'مخطط' : 'Planned',
-        ScheduleStatus.confirmed => ar ? 'معتمد' : 'Confirmed',
-        ScheduleStatus.completed => ar ? 'مكتمل' : 'Completed',
-      };
+    ScheduleStatus.planned => ar ? 'مخطط' : 'Planned',
+    ScheduleStatus.confirmed => ar ? 'معتمد' : 'Confirmed',
+    ScheduleStatus.completed => ar ? 'مكتمل' : 'Completed',
+  };
 }
 
 /// One line of the weekly plan: a single day, with the place the rep must
@@ -61,17 +61,28 @@ enum VisitOutcome { effective, notEffective, notCompleted }
 
 extension VisitOutcomeLabel on VisitOutcome {
   String label(bool ar) => switch (this) {
-        VisitOutcome.effective => ar ? 'فعّالة (تم البيع)' : 'Effective (sale made)',
-        VisitOutcome.notEffective =>
-          ar ? 'غير فعّالة (لم يشترِ الزبون)' : 'Not effective (no purchase)',
-        VisitOutcome.notCompleted => ar ? 'لم تتم الزيارة' : 'Visit not completed',
-      };
+    VisitOutcome.effective =>
+      ar ? 'فعّالة (تم البيع)' : 'Effective (sale made)',
+    VisitOutcome.notEffective =>
+      ar ? 'غير فعّالة (لم يشترِ الزبون)' : 'Not effective (no purchase)',
+    VisitOutcome.notCompleted => ar ? 'لم تتم الزيارة' : 'Visit not completed',
+  };
 
   IconData get icon => switch (this) {
-        VisitOutcome.effective => Icons.check_circle,
-        VisitOutcome.notEffective => Icons.remove_circle_outline,
-        VisitOutcome.notCompleted => Icons.cancel_outlined,
-      };
+    VisitOutcome.effective => Icons.check_circle,
+    VisitOutcome.notEffective => Icons.remove_circle_outline,
+    VisitOutcome.notCompleted => Icons.cancel_outlined,
+  };
+
+  /// أقرب قيمة من تعداد الباك اند (NONE/ORDER_PLACED/PAYMENT_COLLECTED/
+  /// FOLLOW_UP_NEEDED/NO_INTEREST/CUSTOMER_UNAVAILABLE/OTHER) — تخمين
+  /// معقول ريثما يؤكَّد التطابق الدقيق مع الفريق الآخر (راجع
+  /// INTEGRATION_NOTES.md).
+  String get apiValue => switch (this) {
+    VisitOutcome.effective => 'ORDER_PLACED',
+    VisitOutcome.notEffective => 'NO_INTEREST',
+    VisitOutcome.notCompleted => 'CUSTOMER_UNAVAILABLE',
+  };
 }
 
 /// A concrete occurrence of a [ScheduleLine] on a specific calendar date,
@@ -95,7 +106,9 @@ class ScheduledVisit {
 
   bool get isToday {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   bool get isPast {
@@ -156,11 +169,13 @@ DateTime dateForWeekday(DateTime weekStart, int weekday) {
 
 List<ScheduledVisit> buildScheduledVisits(WeeklySchedule schedule) {
   return schedule.lines
-      .map((line) => ScheduledVisit(
-            id: 'sv-${line.id}',
-            line: line,
-            date: dateForWeekday(schedule.weekStart, line.weekday),
-          ))
+      .map(
+        (line) => ScheduledVisit(
+          id: 'sv-${line.id}',
+          line: line,
+          date: dateForWeekday(schedule.weekStart, line.weekday),
+        ),
+      )
       .toList()
     ..sort((a, b) => a.date.compareTo(b.date));
 }
