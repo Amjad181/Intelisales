@@ -289,20 +289,24 @@ class _CustomerCard extends StatelessWidget {
 
   const _CustomerCard({required this.customer, required this.ar});
 
+  // قيم العقد الفعلية: ACTIVE/INACTIVE (القيم الأخرى إرث بيانات تجريبية)
   Color get _statusColor => switch (customer.status) {
     'ACTIVE' => AppColors.tertiary,
+    'INACTIVE' => AppColors.onSurfaceVariant,
     'AT RISK' => AppColors.error,
     _ => AppColors.secondary,
   };
 
   Color get _statusBg => switch (customer.status) {
     'ACTIVE' => AppColors.tertiaryContainer.withValues(alpha: 0.15),
+    'INACTIVE' => AppColors.surfaceContainerHigh,
     'AT RISK' => AppColors.errorContainer.withValues(alpha: 0.2),
     _ => AppColors.secondaryContainer.withValues(alpha: 0.2),
   };
 
   String get _statusLabel => switch (customer.status) {
     'ACTIVE' => ar ? 'نشط' : 'ACTIVE',
+    'INACTIVE' => ar ? 'غير نشط' : 'INACTIVE',
     'AT RISK' => ar ? 'في خطر' : 'AT RISK',
     _ => ar ? 'محتمل' : 'PROSPECT',
   };

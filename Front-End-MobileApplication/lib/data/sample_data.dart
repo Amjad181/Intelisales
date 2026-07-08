@@ -50,9 +50,28 @@ class Customer {
   /// يبني عميلاً من استجابة الباك اند (GET/POST /customers). لا يوجد اسم
   /// عربي منفصل من الباك اند، فتُستخدم نفس القيمة للعرض بالعربي والإنجليزي
   /// حتى تبقى كل الشاشات التي تفرّق بين name/nameAr تعمل دون تعديل.
+  ///
+  /// العنوان في العقد كائن {line1,line2,city,state,postalCode,country}
+  /// (تأكد بالفحص على الباك اند الحقيقي) — يُسطّح هنا لنص عرض واحد.
   factory Customer.fromApi(Map<String, dynamic> json) {
     final name = (json['name'] as String?) ?? '';
     final contactName = (json['contactName'] as String?) ?? '';
+    final rawAddress = json['address'];
+    String addressText = '';
+    String city = '';
+    if (rawAddress is Map<String, dynamic>) {
+      city = (rawAddress['city'] as String?) ?? '';
+      addressText = [
+        rawAddress['line1'],
+        rawAddress['line2'],
+        city,
+        rawAddress['state'],
+        rawAddress['country'],
+      ].whereType<String>().where((s) => s.isNotEmpty).join('، ');
+    } else if (rawAddress is String) {
+      addressText = rawAddress;
+    }
+    final assigned = json['assignedSalesRep'];
     return Customer(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       name: name,
@@ -65,8 +84,11 @@ class Customer {
       lastVisitAr: '',
       status: (json['status'] as String?) ?? '',
       phone1: (json['phone'] as String?) ?? '',
-      address: (json['address'] as String?) ?? '',
-      assignedUser: (json['assignedSalesRep'] as String?) ?? '',
+      address: addressText,
+      region: city,
+      assignedUser: assigned is Map<String, dynamic>
+          ? (assigned['id'] ?? assigned['_id'] ?? '').toString()
+          : (assigned?.toString() ?? ''),
       paymentType: (json['paymentType'] as String?) ?? '',
       customerType: (json['customerType'] as String?) ?? '',
       notes: (json['notes'] as String?) ?? '',
@@ -74,18 +96,28 @@ class Customer {
     );
   }
 
-  /// الشكل الذي يتوقعه الباك اند عند الإنشاء/التعديل (POST/PATCH /customers).
+  static final _objectIdPattern = RegExp(r'^[0-9a-fA-F]{24}$');
+
+  /// الشكل الذي يتوقعه الباك اند عند الإنشاء (POST /customers): المخطط
+  /// strict — تُرسل الحقول المدعومة فقط وتُحذف الفارغة، العنوان كائن،
+  /// وassignedSalesRep فقط إن كان ObjectId صالحاً (المندوب يُعيَّن
+  /// تلقائياً على الخادم خلاف ذلك).
   Map<String, dynamic> toApi() => {
     'name': name,
-    'contactName': contact,
-    'phone': phone1,
-    'email': email,
-    'address': address,
-    'notes': notes,
-    'assignedSalesRep': assignedUser,
-    'customerType': customerType,
-    'paymentType': paymentType,
-    'status': status,
+    if (contact.isNotEmpty) 'contactName': contact,
+    if (phone1.isNotEmpty) 'phone': phone1,
+    if (email.isNotEmpty) 'email': email,
+    if (address.isNotEmpty || region.isNotEmpty)
+      'address': {
+        if (address.isNotEmpty) 'line1': address,
+        if (region.isNotEmpty) 'city': region,
+      },
+    if (notes.isNotEmpty) 'notes': notes,
+    if (_objectIdPattern.hasMatch(assignedUser))
+      'assignedSalesRep': assignedUser,
+    if (customerType.isNotEmpty) 'customerType': customerType,
+    if (paymentType.isNotEmpty) 'paymentType': paymentType,
+    if (status.isNotEmpty) 'status': status,
   };
 }
 

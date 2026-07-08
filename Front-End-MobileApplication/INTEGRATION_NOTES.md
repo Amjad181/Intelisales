@@ -4,11 +4,35 @@ Updated: 2026-07-08 — after executing the "Flutter Mobile App - Backend
 Alignment Plan" (Phases 0–9). The tested Module 12 backend contract is the
 single source of truth; the backend itself was **not modified**.
 
-> ⚠️ The backend was **not reachable on this machine** during this pass
-> (`http://localhost:5000/api/v1/health` timed out), so verification here is
-> `dart format` + `flutter analyze` + `flutter test` (all passing). The
-> real-device/real-backend checks in §7 still need to be run once the
-> backend is up.
+> ✅ **Verified against the real backend** (repo `Back-End`, run locally:
+> portable Node 22 + MongoDB 8 on Windows, `http://127.0.0.1:5000/api/v1`).
+> Integration suite: **41/41 checks passed** (`D:\intelisales-dev\integration_checks.ps1`)
+> covering: rep login → /auth/me → refresh → customer create/list/search →
+> price lists (both routes) → recommendations → invoice draft → confirm →
+> real server PDF (`%PDF` bytes) → visit create/complete/cancel →
+> POST-/visits-with-outcome rejected (400) → dashboard summary exact shape →
+> failure matrix (wrong password, invalid refresh, 401 no-token, PDF JSON
+> error) → admin login smoke → logout invalidates refreshToken.
+> Plus `dart format` + `flutter analyze` + `flutter test` (20/20) passing.
+
+### Contract facts confirmed on the live backend (and fixed in the app)
+
+- **`Customer.address` is an object** `{line1,line2,city,state,postalCode,country}`
+  with a strict schema — the app now sends `{line1, city}` and flattens the
+  object for display (`Customer.fromApi`/`toApi`).
+- **`Customer.status` enum is `ACTIVE`/`INACTIVE` only** (no PROSPECT/AT RISK)
+  — the add-customer dialog now sends `ACTIVE`; legacy statuses remain
+  display-only for demo data.
+- **`assignedSalesRep` must be a Mongo ObjectId** — `toApi` includes it only
+  when it matches `^[0-9a-fA-F]{24}$`; otherwise the backend assigns the rep.
+- **Refresh semantics**: `/auth/refresh-token` re-issues user+accessToken+
+  refreshToken; the old refresh token stays valid until expiry — invalidation
+  happens on **logout** via a server-side `refreshTokenVersion` bump
+  (verified: refresh after logout → 401). The app saves whatever pair is
+  returned, which is fully compatible.
+- **Admin seed role name is `COMPANY_ADMIN`** (not `ADMIN`).
+- On-device (emulator/physical phone) UI pass is still pending — HTTP-level
+  contract verification above covers every call the app makes.
 
 ## 1. Base URL / runtime configuration (no source edits needed)
 

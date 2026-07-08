@@ -72,7 +72,8 @@ class _AddCustomerDialogState extends State<AddCustomerDialog> {
       roleAr: _assignedUser,
       lastVisit: 'No visits yet',
       lastVisitAr: 'لا توجد زيارات بعد',
-      status: 'PROSPECT',
+      // العقد يقبل ACTIVE/INACTIVE فقط (تأكد بالفحص على الباك اند الحقيقي)
+      status: 'ACTIVE',
       shopName: shop,
       phone1: phone1,
       phone2: _phone2Ctrl.text.trim(),
