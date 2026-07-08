@@ -1,0 +1,30 @@
+{
+  "id": "c36f2be7-5ef1-4d0c-a5e6-8cfbb50adf12",
+  "name": "IntelliSales - Local API Environment",
+  "values": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1", "type": "default", "enabled": true },
+    { "key": "adminEmail", "value": "admin@intellisales.com", "type": "default", "enabled": true },
+    { "key": "managerEmail", "value": "manager@intellisales.com", "type": "default", "enabled": true },
+    { "key": "supervisorEmail", "value": "supervisor@intellisales.com", "type": "default", "enabled": true },
+    { "key": "repEmail", "value": "rep@intellisales.com", "type": "default", "enabled": true },
+    { "key": "accountantEmail", "value": "accountant@intellisales.com", "type": "default", "enabled": true },
+    { "key": "seedPassword", "value": "Password123!", "type": "secret", "enabled": true },
+    { "key": "adminAccessToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "managerAccessToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "supervisorAccessToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "repAccessToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "accountantAccessToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "adminRefreshToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "repRefreshToken", "value": "", "type": "secret", "enabled": true },
+    { "key": "salesRepUserId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoUserId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoCustomerId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoProductId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoPriceListId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoInvoiceId", "value": "", "type": "default", "enabled": true },
+    { "key": "demoVisitId", "value": "", "type": "default", "enabled": true },
+    { "key": "runStartedAt", "value": "", "type": "default", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_using": "Codex"
+}

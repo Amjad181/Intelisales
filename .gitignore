@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Logs and test output
+logs/
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+**/coverage/
+.jest-cache/
+**/.jest-cache/
+.cache/
+**/.cache/
+
+# Build output
+dist/
+build/
+**/dist/
+**/build/
+
+# Generated private files
+Back-End/uploads/invoices/*.pdf
+!Back-End/uploads/invoices/.gitkeep
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
