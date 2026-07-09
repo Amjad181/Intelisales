@@ -34,22 +34,35 @@ export async function deletePriceList(id) {
 // The backend has no separate price-list-item endpoint — items live inline on the
 // price list resource (`items[].productId/price/currency`), so item add/edit/remove
 // is a read-modify-write against the parent list's `items` array.
+//
+// GET responses enrich each item with productCode/productName/basePrice/unit for
+// display, but the update schema is strict and only accepts productId/price/currency
+// per item — so existing items must be stripped back down before being resent.
+function toItemPayload(item) {
+  return {
+    productId: item.productId,
+    price: item.price,
+    currency: item.currency,
+  };
+}
 
 export async function addPriceListItem(priceListId, item) {
   const priceList = await getPriceList(priceListId);
-  const items = [...(priceList.items || []), item];
+  const items = [...(priceList.items || []).map(toItemPayload), toItemPayload(item)];
   return updatePriceList(priceListId, { items });
 }
 
 export async function updatePriceListItem(priceListId, itemIndex, item) {
   const priceList = await getPriceList(priceListId);
-  const items = [...(priceList.items || [])];
-  items[itemIndex] = { ...items[itemIndex], ...item };
+  const items = (priceList.items || []).map(toItemPayload);
+  items[itemIndex] = { ...items[itemIndex], ...toItemPayload(item) };
   return updatePriceList(priceListId, { items });
 }
 
 export async function removePriceListItem(priceListId, itemIndex) {
   const priceList = await getPriceList(priceListId);
-  const items = (priceList.items || []).filter((_, index) => index !== itemIndex);
+  const items = (priceList.items || [])
+    .map(toItemPayload)
+    .filter((_, index) => index !== itemIndex);
   return updatePriceList(priceListId, { items });
 }
