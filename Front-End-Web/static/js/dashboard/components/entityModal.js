@@ -106,12 +106,15 @@ function buildFields(entity, record, mode, extra = {}) {
     ].join("");
   }
   if (entity === "customer") {
+    // The backend stores address as an object ({ line1, city, ... }) but the user just
+    // types one free-text line — show that line1 back when editing an existing record.
+    const addressText = typeof record.address === "string" ? record.address : record.address?.line1 || "";
     return [
       fieldText("name", t("form.customer.name"), record.name || ""),
       fieldText("contactName", t("form.customer.contactName"), record.contactName || ""),
-      fieldText("phone", t("form.customer.phone"), record.phone || ""),
+      fieldText("phone", t("form.customer.phone"), record.phone || "", 'inputmode="numeric" placeholder="0999999999"'),
       fieldEmail("email", t("form.customer.email"), record.email || ""),
-      fieldText("address", t("form.customer.address"), record.address || ""),
+      fieldText("address", t("form.customer.address"), addressText),
       fieldSelect("customerType", t("form.customer.type"), record.customerType || "Retail", [
         { value: "Retail", label: t("labels.customerType.retail") },
         { value: "Wholesale", label: t("labels.customerType.wholesale") },
@@ -121,9 +124,9 @@ function buildFields(entity, record, mode, extra = {}) {
         { value: "Cash", label: t("labels.payment.cash") },
         { value: "Credit", label: t("labels.payment.credit") },
       ]),
-      fieldSelect("status", t("form.customer.status"), record.status || "Active", [
-        { value: "Active", label: t("status.active") },
-        { value: "Inactive", label: t("status.inactive") },
+      fieldSelect("status", t("form.customer.status"), record.status || "ACTIVE", [
+        { value: "ACTIVE", label: t("status.active") },
+        { value: "INACTIVE", label: t("status.inactive") },
       ]),
       fieldText("notes", t("form.customer.notes"), record.notes || ""),
     ].join("");
@@ -363,6 +366,29 @@ function applyFormError(form, err) {
   }
 }
 
+const PHONE_PATTERN = /^\d{10}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Client-side checks before hitting the network — phone/email are optional on the
+// backend, so only validate format when the user actually entered something.
+function validateCustomerPayload(payload) {
+  const errors = [];
+  if (payload.phone && !PHONE_PATTERN.test(payload.phone)) {
+    errors.push({ field: "phone", message: t("form.customer.phoneInvalid") });
+  }
+  if (payload.email && !EMAIL_PATTERN.test(payload.email)) {
+    errors.push({ field: "email", message: t("form.customer.emailInvalid") });
+  }
+  return errors;
+}
+
+// The backend stores address as an object ({ line1, ... }); the UI keeps a single
+// free-text field, so wrap it here rather than adding more inputs to the form.
+function buildCustomerPayload(payload) {
+  const { address, ...rest } = payload;
+  return address ? { ...rest, address: { line1: address } } : rest;
+}
+
 const ASYNC_ENTITIES = new Set(["user", "customer", "inventory", "priceList", "priceItem", "invoice", "payment", "visit", "visitComplete"]);
 
 export async function handleEntityFormSubmit(form) {
@@ -382,8 +408,14 @@ export async function handleEntityFormSubmit(form) {
           await createUser({ ...rest, password });
         }
       } else if (entity === "customer") {
-        if (mode === "edit" && recordId) await updateCustomer(recordId, payload);
-        else await createCustomer(payload);
+        const validationErrors = validateCustomerPayload(payload);
+        if (validationErrors.length) {
+          applyFormError(form, { message: t("common.validationFailed"), errors: validationErrors });
+          return false;
+        }
+        const customerPayload = buildCustomerPayload(payload);
+        if (mode === "edit" && recordId) await updateCustomer(recordId, customerPayload);
+        else await createCustomer(customerPayload);
       } else if (entity === "inventory") {
         if (mode === "edit" && recordId) await updateProduct(recordId, payload);
         else await createProduct(payload);
