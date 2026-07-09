@@ -9,8 +9,8 @@ import {
   removeRegion,
 } from "./state/dataStore.js";
 import { getCustomer, deleteCustomer, listCustomers } from "../api/services/customersService.js";
-import { getProduct, deleteProduct, updateProduct, listProductsForPriceList } from "../api/services/productsService.js";
-import { getPriceList, deletePriceList, updatePriceList, removePriceListItem } from "../api/services/priceListsService.js";
+import { getProduct, deleteProduct, listProductsForPriceList } from "../api/services/productsService.js";
+import { getPriceList, deletePriceList, removePriceListItem } from "../api/services/priceListsService.js";
 import { getUser, deleteUser } from "../api/services/usersService.js";
 import {
   getInvoice,
@@ -284,23 +284,25 @@ async function archiveEntity(entity, id) {
       window.alert(err?.message || t("common.loadError"));
     }
   } else if (entity === "inventory") {
-    const message = t("confirm.archiveRecord") || "Archive this product? It will be moved to archived status.";
+    // The backend only has ACTIVE/INACTIVE (no ARCHIVED) — DELETE performs the soft
+    // deactivate (sets status to INACTIVE server-side).
+    const message = t("confirm.archiveRecord") || "Deactivate this product?";
     if (!window.confirm(message)) {
       return;
     }
     try {
-      await updateProduct(id, { status: "Archived" });
+      await deleteProduct(id);
       renderApp();
     } catch (err) {
       window.alert(err?.message || t("common.loadError"));
     }
   } else if (entity === "priceList") {
-    const message = t("confirm.archivePricelist") || "Archive this pricelist? It will be moved to archived status.";
+    const message = t("confirm.archivePricelist") || "Deactivate this pricelist?";
     if (!window.confirm(message)) {
       return;
     }
     try {
-      await updatePriceList(id, { status: "Archived" });
+      await deletePriceList(id);
       renderApp();
     } catch (err) {
       window.alert(err?.message || t("common.loadError"));

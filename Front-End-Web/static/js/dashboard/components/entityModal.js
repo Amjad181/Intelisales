@@ -98,10 +98,9 @@ function buildFields(entity, record, mode, extra = {}) {
         record.role || BACKEND_ROLE_OPTIONS[0].value,
         BACKEND_ROLE_OPTIONS.map(({ value, labelKey }) => ({ value, label: t(labelKey) }))
       ),
-      fieldSelect("status", t("form.user.status"), record.status || "Active", [
-        { value: "Active", label: t("labels.userStatus.active") },
-        { value: "On Leave", label: t("labels.userStatus.onLeave") },
-        { value: "Inactive", label: t("labels.userStatus.inactive") },
+      fieldSelect("status", t("form.user.status"), record.status || "ACTIVE", [
+        { value: "ACTIVE", label: t("labels.userStatus.active") },
+        { value: "INACTIVE", label: t("labels.userStatus.inactive") },
       ]),
     ].join("");
   }
@@ -166,10 +165,9 @@ function buildFields(entity, record, mode, extra = {}) {
       fieldText("basePrice", t("form.inventory.basePrice"), record.basePrice || "", 'placeholder="0.00" inputmode="decimal"'),
       fieldText("currency", t("form.inventory.currency"), record.currency || "SYP"),
       fieldText("taxRate", t("form.inventory.taxRate"), record.taxRate || "", 'placeholder="0" inputmode="decimal"'),
-      fieldSelect("status", t("form.inventory.status"), record.status || "Active", [
-        { value: "Active", label: t("labels.productStatus.active") },
-        { value: "Inactive", label: t("labels.productStatus.inactive") },
-        { value: "Archived", label: t("labels.productStatus.archived") },
+      fieldSelect("status", t("form.inventory.status"), record.status || "ACTIVE", [
+        { value: "ACTIVE", label: t("labels.productStatus.active") },
+        { value: "INACTIVE", label: t("labels.productStatus.inactive") },
       ]),
     ].join("");
   }
@@ -193,9 +191,9 @@ function buildFields(entity, record, mode, extra = {}) {
         { value: "Wholesale", label: t("labels.customerType.wholesale") },
         { value: "KeyAccount", label: t("labels.customerType.keyAccount") },
       ]),
-      fieldSelect("status", t("form.priceList.status"), record.status || "Active", [
-        { value: "Active", label: t("status.active") },
-        { value: "Inactive", label: t("status.inactive") },
+      fieldSelect("status", t("form.priceList.status"), record.status || "ACTIVE", [
+        { value: "ACTIVE", label: t("status.active") },
+        { value: "INACTIVE", label: t("status.inactive") },
       ]),
     ].join("");
   }
