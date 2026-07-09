@@ -105,6 +105,14 @@ const assertDraftInvoice = (invoice) => {
   }
 };
 
+// Draft and confirmed invoices can still be edited (e.g. adding a line item after
+// confirmation); only archived invoices are a closed, immutable record.
+const assertEditableInvoice = (invoice) => {
+  if (invoice.invoiceStatus === INVOICE_STATUSES.ARCHIVED) {
+    throw new AppError('Archived invoices cannot be changed', 400);
+  }
+};
+
 const assertInvoiceCanAcceptPayment = (invoice) => {
   if (invoice.invoiceStatus === INVOICE_STATUSES.ARCHIVED) {
     throw new AppError('Archived invoices cannot be updated for payment', 400);
@@ -552,7 +560,7 @@ const updateInvoice = async (invoiceId, payload, actor) => {
   }
 
   assertInvoiceWritable(invoice, actor);
-  assertDraftInvoice(invoice);
+  assertEditableInvoice(invoice);
 
   const discountType = payload.discountType !== undefined ? payload.discountType : invoice.discountType;
   const discountValue = payload.discountValue !== undefined ? payload.discountValue : invoice.discountValue;
@@ -560,6 +568,7 @@ const updateInvoice = async (invoiceId, payload, actor) => {
   const shouldReprice = payload.items || payload.discountType !== undefined || payload.discountValue !== undefined;
 
   if (shouldReprice) {
+    const previousPaidAmount = roundMoney(invoice.paidAmount || 0);
     const customer = await findActiveCustomer(getReferenceId(invoice.customerId));
     const pricing = await buildInvoicePricing({
       customer,
@@ -570,6 +579,20 @@ const updateInvoice = async (invoiceId, payload, actor) => {
     });
 
     Object.assign(invoice, pricing);
+
+    // buildInvoicePricing assumes a brand-new invoice (paidAmount: 0) — if a payment
+    // was already recorded (invoice was confirmed and edited afterwards), reapply it
+    // against the new total instead of silently wiping it out.
+    if (previousPaidAmount > 0) {
+      const remainingAmount = roundMoney(Math.max(pricing.totalAmount - previousPaidAmount, 0));
+      invoice.paidAmount = previousPaidAmount;
+      invoice.remainingAmount = remainingAmount;
+      if (remainingAmount === 0) {
+        invoice.paymentStatus = PAYMENT_STATUSES.PAID;
+      } else if (invoice.paymentStatus !== PAYMENT_STATUSES.SENT) {
+        invoice.paymentStatus = PAYMENT_STATUSES.PENDING;
+      }
+    }
   }
 
   for (const field of ['dueDate', 'source', 'voiceText', 'notes']) {

@@ -330,11 +330,14 @@ function buildFields(entity, record, mode, extra = {}) {
     // Custom markup (not the generic fieldSelect) so each <option> can carry the customer's
     // type — main.js reads it on 'change' to refetch that type's active price list and swap
     // the product catalog, so only invoiceable products for THIS customer can be selected.
+    // The customer can't be changed once an invoice exists (the update endpoint's schema
+    // doesn't accept customerId at all), so lock the field in edit mode instead of letting
+    // the user pick a different one and have it silently do nothing.
     const customerField = customerOptions.length
       ? `
         <div class="modal-field">
           <label for="fld-customerId">${escapeHtml(t("form.invoice.customer"))}</label>
-          <select id="fld-customerId" name="customerId" data-action="invoice-customer-change">
+          <select id="fld-customerId" name="customerId" data-action="invoice-customer-change" ${mode === "edit" ? "disabled" : ""}>
             <option value="">${escapeHtml(t("form.invoice.selectCustomer"))}</option>
             ${customerOptions.map((c) => `<option value="${escapeHtml(c.value)}" data-customer-type="${escapeHtml(c.customerType || "")}" ${c.value === (record.customerId || "") ? "selected" : ""}>${escapeHtml(c.label)}</option>`).join("")}
           </select>
@@ -497,6 +500,29 @@ async function promptAndRecordInitialPayment(invoice) {
   });
 }
 
+// Editing a confirmed invoice (e.g. adding a line item) can raise its total beyond what's
+// already been paid — offer to collect the difference right away. paidAmount on the
+// payment endpoint is an absolute figure, not a delta, so we add the new amount to what
+// was already paid rather than sending it alone.
+async function promptAndRecordAdditionalPayment(invoice) {
+  const remainingAmount = Number(invoice?.remainingAmount || 0);
+  if (!(remainingAmount > 0)) return;
+
+  const raw = window.prompt(
+    t("form.payment.askAdditional", { remaining: remainingAmount, currency: invoice.currency || "" })
+  );
+  if (raw === null || raw.trim() === "") return;
+
+  const additionalAmount = Number(raw);
+  if (!(additionalAmount > 0)) return;
+
+  const invoiceId = invoice.id || invoice._id;
+  const previousPaidAmount = Number(invoice.paidAmount || 0);
+  await recordInvoicePayment(invoiceId, {
+    paidAmount: previousPaidAmount + Math.min(additionalAmount, remainingAmount),
+  });
+}
+
 const ASYNC_ENTITIES = new Set(["user", "customer", "inventory", "priceList", "priceItem", "invoice", "payment", "visit", "visitComplete"]);
 
 export async function handleEntityFormSubmit(form) {
@@ -554,8 +580,14 @@ export async function handleEntityFormSubmit(form) {
           notes: payload.notes,
         };
         let savedInvoice;
-        if (mode === "edit" && recordId) savedInvoice = await updateInvoice(recordId, invoicePayload);
-        else savedInvoice = await createInvoice(invoicePayload);
+        if (mode === "edit" && recordId) {
+          // The update endpoint's schema is strict and doesn't accept customerId at all —
+          // an invoice's customer can't be changed after creation, only its items/discount/notes.
+          const { customerId, ...updatePayload } = invoicePayload;
+          savedInvoice = await updateInvoice(recordId, updatePayload);
+        } else {
+          savedInvoice = await createInvoice(invoicePayload);
+        }
 
         // Only admin/manager can both write invoices and manage payment on the backend —
         // ask for an initial payment right after creating a fresh draft for those roles.
@@ -564,6 +596,16 @@ export async function handleEntityFormSubmit(form) {
             await promptAndRecordInitialPayment(savedInvoice);
           } catch (err) {
             window.alert(`${t("form.payment.createdButPaymentFailed")}${err?.message || t("common.loadError")}`);
+          }
+        } else if (
+          mode === "edit" &&
+          savedInvoice.invoiceStatus === "CONFIRMED" &&
+          INVOICE_PAYMENT_ROLES.has(appState.userRoleKey)
+        ) {
+          try {
+            await promptAndRecordAdditionalPayment(savedInvoice);
+          } catch (err) {
+            window.alert(`${t("form.payment.updatedButPaymentFailed")}${err?.message || t("common.loadError")}`);
           }
         }
       } else if (entity === "payment") {

@@ -321,6 +321,8 @@ export const MESSAGES = {
         amount: "Amount",
         askAtCreate: "How much has the customer paid now? Total due: {total} {currency}. Leave blank to record no payment yet.",
         createdButPaymentFailed: "Invoice created, but recording the payment failed: ",
+        askAdditional: "The invoice total changed after this edit. Remaining balance: {remaining} {currency}. How much would you like to pay now? Leave blank to record no additional payment.",
+        updatedButPaymentFailed: "Invoice updated, but recording the additional payment failed: ",
       },
       inventory: {
         productName: "Product name",
@@ -793,6 +795,8 @@ export const MESSAGES = {
         amount: "المبلغ",
         askAtCreate: "كم دفع العميل الآن؟ المبلغ المستحق: {total} {currency}. اتركه فارغاً لعدم تسجيل أي دفعة الآن.",
         createdButPaymentFailed: "تم إنشاء الفاتورة، لكن تسجيل الدفعة فشل: ",
+        askAdditional: "تغيّر إجمالي الفاتورة بعد هذا التعديل. المبلغ المتبقي: {remaining} {currency}. كم تريد دفعه الآن؟ اتركه فارغاً لعدم تسجيل دفعة إضافية.",
+        updatedButPaymentFailed: "تم تعديل الفاتورة، لكن تسجيل الدفعة الإضافية فشل: ",
       },
       inventory: {
         productName: "اسم المنتج",

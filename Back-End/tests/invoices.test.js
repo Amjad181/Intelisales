@@ -1046,7 +1046,7 @@ describe('invoices module', () => {
     expect(secondConfirmResponse.body.message).toBe('Only draft invoices can be changed');
   });
 
-  it('does not edit confirmed or archived invoices', async () => {
+  it('edits confirmed invoices but not archived invoices', async () => {
     const createResponse = await createDraftInvoice();
     const invoiceId = createResponse.body.data.invoice.id;
 
@@ -1057,10 +1057,12 @@ describe('invoices module', () => {
     const confirmedEditResponse = await request(app)
       .patch(`/api/v1/invoices/${invoiceId}`)
       .set('Authorization', `Bearer ${tokenFor(users[3])}`)
-      .send({ notes: 'Should fail' });
+      .send({ notes: 'Added after confirmation' });
 
-    expect(confirmedEditResponse.status).toBe(400);
-    expect(confirmedEditResponse.body.message).toBe('Only draft invoices can be changed');
+    expect(confirmedEditResponse.status).toBe(200);
+    expect(confirmedEditResponse.body.data.invoice.notes).toBe('Added after confirmation');
+    expect(confirmedEditResponse.body.data.invoice.invoiceStatus).toBe(INVOICE_STATUSES.CONFIRMED);
+    expect(confirmedEditResponse.body.data.invoice.invoiceNumber).toMatch(/^INV-\d{4}-00001$/);
 
     await request(app)
       .patch(`/api/v1/invoices/${invoiceId}/archive`)
@@ -1072,7 +1074,44 @@ describe('invoices module', () => {
       .send({ notes: 'Still should fail' });
 
     expect(archivedEditResponse.status).toBe(400);
-    expect(archivedEditResponse.body.message).toBe('Only draft invoices can be changed');
+    expect(archivedEditResponse.body.message).toBe('Archived invoices cannot be changed');
+  });
+
+  it('reprices a confirmed invoice after payment without losing the recorded payment', async () => {
+    const createResponse = await createDraftInvoice();
+    const invoiceId = createResponse.body.data.invoice.id;
+
+    await request(app)
+      .patch(`/api/v1/invoices/${invoiceId}/confirm`)
+      .set('Authorization', `Bearer ${tokenFor(users[3])}`);
+
+    const paymentResponse = await request(app)
+      .patch(`/api/v1/invoices/${invoiceId}/payment`)
+      .set('Authorization', `Bearer ${tokenFor(users[0])}`)
+      .send({ paidAmount: 100 });
+
+    expect(paymentResponse.status).toBe(200);
+    expect(paymentResponse.body.data.invoice.totalAmount).toBe(216);
+    expect(paymentResponse.body.data.invoice.paidAmount).toBe(100);
+    expect(paymentResponse.body.data.invoice.remainingAmount).toBe(116);
+
+    const editResponse = await request(app)
+      .patch(`/api/v1/invoices/${invoiceId}`)
+      .set('Authorization', `Bearer ${tokenFor(users[3])}`)
+      .send({
+        items: [
+          {
+            productId: ids.productPaper,
+            quantity: 3,
+          },
+        ],
+      });
+
+    expect(editResponse.status).toBe(200);
+    expect(editResponse.body.data.invoice.totalAmount).toBe(324);
+    expect(editResponse.body.data.invoice.paidAmount).toBe(100);
+    expect(editResponse.body.data.invoice.remainingAmount).toBe(224);
+    expect(editResponse.body.data.invoice.paymentStatus).toBe(PAYMENT_STATUSES.PENDING);
   });
 
   it('keeps product price snapshot unchanged after product and price list changes', async () => {
