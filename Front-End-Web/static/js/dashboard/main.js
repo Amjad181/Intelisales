@@ -209,10 +209,12 @@ async function openEntityModal(entity, mode, id, options = {}) {
         listProductsForPriceList({ limit: 100 }),
       ]);
       const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
+      // GET /products/price-list (the selector route used here) names the field `price`,
+      // not `basePrice` like the main /products list endpoint.
       const productOptions = (productsRes.items || []).map((p) => ({
         value: p.id || p._id,
         label: p.name,
-        basePrice: p.basePrice,
+        basePrice: p.price,
         currency: p.currency,
       }));
       modalMount.innerHTML = buildModalMarkup("invoice", mode, id || "", invoice || {}, { customerOptions, productOptions });
