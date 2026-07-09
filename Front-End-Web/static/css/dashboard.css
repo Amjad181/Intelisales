@@ -242,7 +242,7 @@ html[dir="rtl"] body {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
   margin-bottom: 0.9rem;
 }
@@ -253,6 +253,45 @@ html[dir="rtl"] body {
   border-radius: 14px;
   padding: 1rem 1.05rem;
   box-shadow: 0 1px 0 rgba(20, 35, 58, 0.04);
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.kpi-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card--clickable:hover,
+.kpi-card--clickable:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(20, 35, 58, 0.08);
+}
+
+.top-rep-spotlight {
+  text-align: center;
+  padding: 0.6rem 0 0.2rem;
+}
+
+.top-rep-spotlight__name {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.top-rep-spotlight__amount {
+  margin: 0.3rem 0 0;
+  font-size: 1.05rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.top-rep-spotlight__meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 
 .kpi-card h3 {

@@ -277,6 +277,14 @@ const makeProduct = ({
   status,
 });
 
+// The sales-reps dashboard scopes totalSalesAmount to the current calendar month, so
+// fixtures relying on the default confirmedAt must fall within "now"'s month regardless
+// of when the suite runs (day 27 exists in every month, so this never overflows).
+const dayInCurrentMonth = (day, hour) => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day, hour));
+};
+
 const makeInvoice = ({
   id,
   invoiceNumber,
@@ -288,7 +296,7 @@ const makeInvoice = ({
   paidAmount = 100,
   remainingAmount = 900,
   dueDate = new Date('2026-01-01T00:00:00.000Z'),
-  confirmedAt = new Date('2026-06-27T10:00:00.000Z'),
+  confirmedAt = dayInCurrentMonth(27, 10),
   createdAt = new Date('2026-06-27T09:00:00.000Z'),
   updatedAt = new Date('2026-06-27T11:00:00.000Z'),
 }) => ({

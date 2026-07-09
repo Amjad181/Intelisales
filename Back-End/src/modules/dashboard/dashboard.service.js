@@ -423,6 +423,11 @@ const getSalesRepDashboard = async () => {
     role: USER_ROLES.SALES_REPRESENTATIVE,
   }).sort({ name: 1 });
 
+  // Sales amounts are scoped to the current calendar month so the dashboard can surface
+  // this month's top performer (invoiceCount/visitCount below stay all-time).
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
   const summaries = [];
 
   for (const salesRep of salesReps) {
@@ -432,22 +437,26 @@ const getSalesRepDashboard = async () => {
       ...invoiceScopeFilter,
       invoiceStatus: INVOICE_STATUSES.CONFIRMED,
     };
+    const monthlyConfirmedInvoiceFilter = {
+      ...confirmedInvoiceFilter,
+      confirmedAt: { $gte: monthStart },
+    };
     const [
       assignedCustomers,
       invoiceCount,
       confirmedInvoiceCount,
-      confirmedInvoices,
+      confirmedInvoicesThisMonth,
       visitCount,
       completedVisitCount,
     ] = await Promise.all([
       Customer.countDocuments({ assignedSalesRep: salesRepId }),
       Invoice.countDocuments(invoiceScopeFilter),
       Invoice.countDocuments(confirmedInvoiceFilter),
-      Invoice.find(confirmedInvoiceFilter),
+      Invoice.find(monthlyConfirmedInvoiceFilter),
       Visit.countDocuments({ salesRep: salesRepId }),
       Visit.countDocuments({ salesRep: salesRepId, status: VISIT_STATUSES.COMPLETED }),
     ]);
-    const invoiceTotals = sumFields(confirmedInvoices, ['totalAmount', 'paidAmount', 'remainingAmount']);
+    const invoiceTotals = sumFields(confirmedInvoicesThisMonth, ['totalAmount', 'paidAmount', 'remainingAmount']);
     const safeSalesRep = formatUserResponse(salesRep);
 
     summaries.push({
@@ -461,12 +470,14 @@ const getSalesRepDashboard = async () => {
       totalSalesAmount: roundMoney(invoiceTotals.totalAmount),
       paidAmount: roundMoney(invoiceTotals.paidAmount),
       remainingAmount: roundMoney(invoiceTotals.remainingAmount),
+      currency: DEFAULT_CURRENCY,
       visitCount,
       completedVisitCount,
     });
   }
 
-  return summaries;
+  // Descending by this month's sales so index 0 is the current top performer.
+  return summaries.sort((a, b) => b.totalSalesAmount - a.totalSalesAmount);
 };
 
 const canReadSalesRepDashboard = (actor) => isManagementRole(actor.role);

@@ -116,13 +116,12 @@ export const MESSAGES = {
       assignRep: "Assign Sales Rep",
       viewReports: "View Reports",
       topReps: "Top Sales Reps",
+      topRepThisMonth: "Top performer this month",
       addRep: "Add rep",
-      recentActivity: "Recent Activity",
       kpi: {
         totalCustomers: "Total Customers",
         totalProducts: "Total Products",
         totalInvoices: "Total Invoices",
-        totalVisits: "Total Visits",
       },
       repPerformance: {
         onTarget: "On target",
@@ -578,13 +577,12 @@ export const MESSAGES = {
       assignRep: "تعيين مندوب",
       viewReports: "عرض التقارير",
       topReps: "أفضل مندوبي المبيعات",
+      topRepThisMonth: "الأفضل مبيعاً هذا الشهر",
       addRep: "إضافة مندوب",
-      recentActivity: "النشاط الأخير",
       kpi: {
         totalCustomers: "إجمالي العملاء",
         totalProducts: "إجمالي المنتجات",
         totalInvoices: "إجمالي الفواتير",
-        totalVisits: "إجمالي الزيارات",
       },
       repPerformance: {
         onTarget: "ضمن المستهدف",
