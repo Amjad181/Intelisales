@@ -90,6 +90,18 @@ export function updateInvoiceItemRowPrice(selectEl) {
   if (priceEl) priceEl.textContent = invoiceItemUnitPriceText(selectEl.value);
 }
 
+// Called by main.js when the invoice's customer changes — replaces the catalog with only
+// what's actually invoiceable for that customer (the active price list for their type), so
+// picking a product here can never hit the backend's "price not found" rejection at submit.
+// Rebuilds every already-rendered row so a no-longer-valid selection resets to "None".
+export function setInvoiceProductCatalog(options) {
+  invoiceProductOptions = options;
+  document.querySelectorAll(".invoice-item-row__product").forEach((select) => {
+    select.innerHTML = invoiceProductSelectOptions(select.value);
+    updateInvoiceItemRowPrice(select);
+  });
+}
+
 // Fixed backend enum for a completed visit's outcome.
 const VISIT_OUTCOMES = [
   "ORDER_PLACED",
@@ -315,8 +327,19 @@ function buildFields(entity, record, mode, extra = {}) {
       .map((item) => invoiceItemRowHtml(item))
       .join("");
 
+    // Custom markup (not the generic fieldSelect) so each <option> can carry the customer's
+    // type — main.js reads it on 'change' to refetch that type's active price list and swap
+    // the product catalog, so only invoiceable products for THIS customer can be selected.
     const customerField = customerOptions.length
-      ? fieldSelect("customerId", t("form.invoice.customer"), record.customerId || "", customerOptions)
+      ? `
+        <div class="modal-field">
+          <label for="fld-customerId">${escapeHtml(t("form.invoice.customer"))}</label>
+          <select id="fld-customerId" name="customerId" data-action="invoice-customer-change">
+            <option value="">${escapeHtml(t("form.invoice.selectCustomer"))}</option>
+            ${customerOptions.map((c) => `<option value="${escapeHtml(c.value)}" data-customer-type="${escapeHtml(c.customerType || "")}" ${c.value === (record.customerId || "") ? "selected" : ""}>${escapeHtml(c.label)}</option>`).join("")}
+          </select>
+        </div>
+      `
       : `<p class="modal-hint">${escapeHtml(t("modal.hint.invoiceNoCustomer"))}</p>`;
 
     const discountType = record.discountType || "NONE";

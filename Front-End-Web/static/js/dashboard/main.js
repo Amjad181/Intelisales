@@ -1,6 +1,6 @@
 import { renderSidebar } from "./components/sidebar.js";
 import { renderTopbar } from "./components/topbar.js";
-import { buildModalMarkup, handleEntityFormSubmit, addInvoiceItemRow, updateInvoiceItemRowPrice } from "./components/entityModal.js";
+import { buildModalMarkup, handleEntityFormSubmit, addInvoiceItemRow, updateInvoiceItemRowPrice, setInvoiceProductCatalog } from "./components/entityModal.js";
 import { renderLoadingState, renderErrorState, renderModalLoadingOverlay, renderModalErrorOverlay } from "./components/asyncState.js";
 import { appState, setActiveRoute, getListPage, setListPage, getListSearch, setListSearch, can } from "./state/appState.js";
 import {
@@ -10,7 +10,7 @@ import {
 } from "./state/dataStore.js";
 import { getCustomer, deleteCustomer, listCustomers } from "../api/services/customersService.js";
 import { getProduct, deleteProduct, listProductsForPriceList } from "../api/services/productsService.js";
-import { getPriceList, deletePriceList, removePriceListItem } from "../api/services/priceListsService.js";
+import { getPriceList, deletePriceList, removePriceListItem, getPriceListByCustomerType } from "../api/services/priceListsService.js";
 import { getUser, deleteUser } from "../api/services/usersService.js";
 import {
   getInvoice,
@@ -42,6 +42,31 @@ import { t, setLocale, initI18n } from "../i18n/i18n.js";
 import { isAuthenticated, logout, refreshCurrentUser } from "../api/authService.js";
 
 initI18n();
+
+// Fallback catalog shown in the invoice item picker before a customer is chosen (or if
+// their customer type has no active price list) — set whenever the invoice modal opens.
+let invoiceFullProductCatalog = [];
+
+async function applyInvoiceProductCatalogForCustomerType(customerType) {
+  if (!customerType) {
+    setInvoiceProductCatalog(invoiceFullProductCatalog);
+    return;
+  }
+  try {
+    const priceList = await getPriceListByCustomerType(customerType);
+    const items = (priceList?.items || []).map((item) => ({
+      value: item.productId,
+      label: item.productName || item.productCode || item.productId,
+      basePrice: item.price,
+      currency: item.currency,
+    }));
+    setInvoiceProductCatalog(items);
+  } catch {
+    // No active price list for this customer type — fall back to the full catalog so the
+    // picker isn't left empty; the backend still rejects an unpriced product at submit time.
+    setInvoiceProductCatalog(invoiceFullProductCatalog);
+  }
+}
 
 const routes = [
   { key: "overview", render: renderOverviewPage },
@@ -208,16 +233,29 @@ async function openEntityModal(entity, mode, id, options = {}) {
         listCustomers({ limit: 100 }),
         listProductsForPriceList({ limit: 100 }),
       ]);
-      const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
+      const customerOptions = (customersRes.items || []).map((c) => ({
+        value: c.id || c._id,
+        label: c.name,
+        customerType: c.customerType,
+      }));
       // GET /products/price-list (the selector route used here) names the field `price`,
-      // not `basePrice` like the main /products list endpoint.
+      // not `basePrice` like the main /products list endpoint. This full catalog is only
+      // the fallback shown before a customer is picked / if their type has no price list.
       const productOptions = (productsRes.items || []).map((p) => ({
         value: p.id || p._id,
         label: p.name,
         basePrice: p.price,
         currency: p.currency,
       }));
+      invoiceFullProductCatalog = productOptions;
       modalMount.innerHTML = buildModalMarkup("invoice", mode, id || "", invoice || {}, { customerOptions, productOptions });
+
+      // Editing an invoice that already has a customer — narrow the catalog to only what's
+      // actually invoiceable for that customer's type, same as the 'change' handler does.
+      const existingCustomerType = invoice?.customerSnapshot?.customerType;
+      if (existingCustomerType) {
+        applyInvoiceProductCatalogForCustomerType(existingCustomerType);
+      }
     } catch (err) {
       modalMount.innerHTML = renderModalErrorOverlay(err);
     }
@@ -602,6 +640,12 @@ document.addEventListener("change", (event) => {
 
   if (target.dataset.action === "invoice-item-product-change") {
     updateInvoiceItemRowPrice(target);
+    return;
+  }
+
+  if (target.dataset.action === "invoice-customer-change") {
+    const customerType = target.selectedOptions[0]?.dataset.customerType || "";
+    applyInvoiceProductCatalogForCustomerType(customerType);
     return;
   }
 

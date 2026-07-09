@@ -303,6 +303,7 @@ export const MESSAGES = {
       },
       invoice: {
         customer: "Customer",
+        selectCustomer: "— Select a customer —",
         dueDate: "Due Date",
         dueDateHint: "The date payment is expected from the customer",
         discountType: "Discount Type",
@@ -774,6 +775,7 @@ export const MESSAGES = {
       },
       invoice: {
         customer: "العميل",
+        selectCustomer: "— اختر عميلاً —",
         dueDate: "تاريخ الاستحقاق",
         dueDateHint: "التاريخ الذي يُتوقع أن يسدد فيه العميل المبلغ",
         discountType: "نوع الخصم",
