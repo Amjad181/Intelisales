@@ -17,7 +17,7 @@ export async function renderInvoicesPage() {
         <tr>
           <td class="td-muted">
             <button type="button" class="btn-text btn-text--view" data-action="nav-route" data-route="invoice/${escapeHtml(id)}">
-              ${escapeHtml(row.invoiceNumber)}
+              ${escapeHtml(row.invoiceNumber || t("invoices.draftNumber"))}
             </button>
           </td>
           <td class="td-strong">${escapeHtml(row.customerSnapshot?.name || row.customerId || "—")}</td>

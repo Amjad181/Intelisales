@@ -1,6 +1,6 @@
 import { renderSidebar } from "./components/sidebar.js";
 import { renderTopbar } from "./components/topbar.js";
-import { buildModalMarkup, handleEntityFormSubmit } from "./components/entityModal.js";
+import { buildModalMarkup, handleEntityFormSubmit, addInvoiceItemRow, updateInvoiceItemRowPrice } from "./components/entityModal.js";
 import { renderLoadingState, renderErrorState, renderModalLoadingOverlay, renderModalErrorOverlay } from "./components/asyncState.js";
 import { appState, setActiveRoute, getListPage, setListPage, getListSearch, setListSearch, can } from "./state/appState.js";
 import {
@@ -209,7 +209,12 @@ async function openEntityModal(entity, mode, id, options = {}) {
         listProductsForPriceList({ limit: 100 }),
       ]);
       const customerOptions = (customersRes.items || []).map((c) => ({ value: c.id || c._id, label: c.name }));
-      const productOptions = (productsRes.items || []).map((p) => ({ value: p.id || p._id, label: p.name }));
+      const productOptions = (productsRes.items || []).map((p) => ({
+        value: p.id || p._id,
+        label: p.name,
+        basePrice: p.basePrice,
+        currency: p.currency,
+      }));
       modalMount.innerHTML = buildModalMarkup("invoice", mode, id || "", invoice || {}, { customerOptions, productOptions });
     } catch (err) {
       modalMount.innerHTML = renderModalErrorOverlay(err);
@@ -557,10 +562,57 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  if (action === "add-invoice-item") {
+    event.preventDefault();
+    const container = actionEl.closest(".modal-section")?.querySelector(".invoice-items-list");
+    addInvoiceItemRow(container);
+    return;
+  }
+
+  if (action === "remove-invoice-item") {
+    event.preventDefault();
+    const row = actionEl.closest(".invoice-item-row");
+    const list = row?.parentElement;
+    if (row && list && list.children.length > 1) {
+      row.remove();
+    } else if (row) {
+      // Keep at least one row — just clear it instead of removing it.
+      const select = row.querySelector(".invoice-item-row__product");
+      const qty = row.querySelector(".invoice-item-row__qty");
+      if (select) select.value = "";
+      if (qty) qty.value = "";
+      const priceEl = row.querySelector(".invoice-item-row__price");
+      if (priceEl) priceEl.textContent = "—";
+    }
+    return;
+  }
+
   if (action === "nav-route") {
     event.preventDefault();
     const route = actionEl.dataset.route || "overview";
     window.location.hash = route;
+  }
+});
+
+document.addEventListener("change", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  if (target.dataset.action === "invoice-item-product-change") {
+    updateInvoiceItemRowPrice(target);
+    return;
+  }
+
+  if (target.dataset.action === "invoice-discount-type-change") {
+    const form = target.closest("form");
+    const discountValueInput = form?.querySelector('[name="discountValue"]');
+    if (!discountValueInput) return;
+    if (target.value === "NONE") {
+      discountValueInput.value = "";
+      discountValueInput.disabled = true;
+    } else {
+      discountValueInput.disabled = false;
+    }
   }
 });
 

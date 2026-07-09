@@ -78,6 +78,7 @@ export const MESSAGES = {
     common: {
       edit: "Edit",
       delete: "Delete",
+      remove: "Remove",
       archive: "Archive",
       cancel: "Cancel",
       close: "Close",
@@ -151,6 +152,7 @@ export const MESSAGES = {
     invoices: {
       searchPh: "Search invoice number or customer",
       newInvoice: "New Invoice",
+      draftNumber: "Draft",
       thInvoiceNumber: "Invoice #",
       thCustomer: "Customer",
       thTotalAmount: "Total Amount",
@@ -302,17 +304,22 @@ export const MESSAGES = {
       invoice: {
         customer: "Customer",
         dueDate: "Due Date",
+        dueDateHint: "The date payment is expected from the customer",
         discountType: "Discount Type",
         discountValue: "Discount Value",
         notes: "Notes",
         notesPh: "Add any notes or special instructions",
-        itemsHint: "Fill in a product and quantity for each line you want to include; leave the rest blank.",
-        itemProduct: "Item {n} product",
+        itemsHint: "Add a line for each product and quantity to include in this invoice.",
+        itemProduct: "Product",
+        itemUnitPrice: "Unit Price",
         itemQty: "Quantity",
         itemNone: "— None —",
+        addItem: "Add product line",
       },
       payment: {
         amount: "Amount",
+        askAtCreate: "How much has the customer paid now? Total due: {total} {currency}. Leave blank to record no payment yet.",
+        createdButPaymentFailed: "Invoice created, but recording the payment failed: ",
       },
       inventory: {
         productName: "Product name",
@@ -541,6 +548,7 @@ export const MESSAGES = {
     common: {
       edit: "تعديل",
       delete: "حذف",
+      remove: "إزالة",
       archive: "أرشفة",
       cancel: "إلغاء",
       close: "إغلاق",
@@ -615,6 +623,7 @@ export const MESSAGES = {
     invoices: {
       searchPh: "ابحث عن رقم الفاتورة أو العميل",
       newInvoice: "فاتورة جديدة",
+      draftNumber: "مسودة",
       thInvoiceNumber: "رقم الفاتورة",
       thCustomer: "العميل",
       thTotalAmount: "المبلغ الإجمالي",
@@ -766,17 +775,22 @@ export const MESSAGES = {
       invoice: {
         customer: "العميل",
         dueDate: "تاريخ الاستحقاق",
+        dueDateHint: "التاريخ الذي يُتوقع أن يسدد فيه العميل المبلغ",
         discountType: "نوع الخصم",
         discountValue: "قيمة الخصم",
         notes: "ملاحظات",
         notesPh: "أضف أي ملاحظات أو تعليمات خاصة",
-        itemsHint: "أدخل منتجًا وكمية لكل سطر تريد تضمينه، واترك الباقي فارغًا.",
-        itemProduct: "منتج السطر {n}",
+        itemsHint: "أضف سطراً لكل منتج وكمية تريد تضمينهما في هذه الفاتورة.",
+        itemProduct: "المنتج",
+        itemUnitPrice: "سعر الوحدة",
         itemQty: "الكمية",
         itemNone: "— لا شيء —",
+        addItem: "إضافة سطر منتج",
       },
       payment: {
         amount: "المبلغ",
+        askAtCreate: "كم دفع العميل الآن؟ المبلغ المستحق: {total} {currency}. اتركه فارغاً لعدم تسجيل أي دفعة الآن.",
+        createdButPaymentFailed: "تم إنشاء الفاتورة، لكن تسجيل الدفعة فشل: ",
       },
       inventory: {
         productName: "اسم المنتج",

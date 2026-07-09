@@ -909,12 +909,24 @@ html[dir="rtl"] body {
 
 .invoice-item-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 2fr 1fr 0.8fr auto;
   gap: 0.6rem;
+  align-items: end;
 }
 
 .invoice-item-row .modal-field {
   margin: 0;
+}
+
+.invoice-item-row__price {
+  display: block;
+  padding: 0 0 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.invoice-item-row__remove {
+  white-space: nowrap;
 }
 
 @media (max-width: 620px) {
@@ -980,6 +992,10 @@ html[dir="rtl"] body {
 .modal-section h4 {
   margin: 0 0 0.35rem;
   font-size: 0.98rem;
+}
+
+.modal-section > .invoice-items-list {
+  margin-bottom: 0.6rem;
 }
 
 .modal-footer {

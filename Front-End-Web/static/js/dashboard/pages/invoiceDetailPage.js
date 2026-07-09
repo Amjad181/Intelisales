@@ -73,7 +73,7 @@ export async function renderInvoiceDetailPage() {
             <tbody>
               <tr>
                 <th>${escapeHtml(t("invoices.thInvoiceNumber"))}</th>
-                <td>${escapeHtml(invoice.invoiceNumber)}</td>
+                <td>${escapeHtml(invoice.invoiceNumber || t("invoices.draftNumber"))}</td>
               </tr>
               <tr>
                 <th>${escapeHtml(t("invoices.thCustomer"))}</th>

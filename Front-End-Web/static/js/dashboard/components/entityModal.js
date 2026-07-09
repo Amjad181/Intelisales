@@ -8,12 +8,13 @@ import {
 } from "../state/dataStore.js";
 import { escapeHtml } from "../utils/html.js";
 import { t } from "../../i18n/i18n.js";
+import { appState } from "../state/appState.js";
 import { BACKEND_ROLE_OPTIONS } from "../../api/roleMap.js";
 import { createCustomer, updateCustomer } from "../../api/services/customersService.js";
 import { createProduct, updateProduct } from "../../api/services/productsService.js";
 import { createPriceList, updatePriceList, addPriceListItem, updatePriceListItem } from "../../api/services/priceListsService.js";
 import { createUser, updateUser, updateUserPassword } from "../../api/services/usersService.js";
-import { createInvoice, updateInvoice, recordInvoicePayment } from "../../api/services/invoicesService.js";
+import { createInvoice, updateInvoice, confirmInvoice, recordInvoicePayment } from "../../api/services/invoicesService.js";
 import { createVisit, updateVisit, completeVisit } from "../../api/services/visitsService.js";
 
 function getRecord(entity, id) {
@@ -31,7 +32,63 @@ function getRecord(entity, id) {
   return list.find((item) => item.id === id) || null;
 }
 
-const INVOICE_ITEM_ROW_COUNT = 6;
+// The invoice line-item builder is dynamic (add/remove any number of rows). This module-level
+// cache holds the product catalog + a running row-id counter so main.js's "add row" click
+// handler can grow the list without a full modal re-render.
+let invoiceProductOptions = [];
+let nextInvoiceRowId = 0;
+
+function invoiceProductSelectOptions(selectedProductId) {
+  return [{ value: "", label: t("form.invoice.itemNone") }, ...invoiceProductOptions]
+    .map((o) => {
+      const priceAttr = o.basePrice !== undefined
+        ? ` data-price="${escapeHtml(o.basePrice)}" data-currency="${escapeHtml(o.currency || "")}"`
+        : "";
+      const selected = o.value === (selectedProductId || "") ? "selected" : "";
+      return `<option value="${escapeHtml(o.value)}"${priceAttr} ${selected}>${escapeHtml(o.label)}</option>`;
+    })
+    .join("");
+}
+
+function invoiceItemUnitPriceText(productId) {
+  const product = invoiceProductOptions.find((o) => o.value === productId);
+  if (!product || product.basePrice === undefined) return "—";
+  return `${product.basePrice} ${product.currency || ""}`.trim();
+}
+
+function invoiceItemRowHtml(item = {}) {
+  const rowId = nextInvoiceRowId++;
+  return `
+    <div class="invoice-item-row" data-row-id="${rowId}">
+      <div class="modal-field">
+        <label>${escapeHtml(t("form.invoice.itemProduct"))}</label>
+        <select class="invoice-item-row__product" data-action="invoice-item-product-change">${invoiceProductSelectOptions(item.productId)}</select>
+      </div>
+      <div class="modal-field">
+        <label>${escapeHtml(t("form.invoice.itemUnitPrice"))}</label>
+        <span class="invoice-item-row__price">${escapeHtml(invoiceItemUnitPriceText(item.productId))}</span>
+      </div>
+      <div class="modal-field">
+        <label>${escapeHtml(t("form.invoice.itemQty"))}</label>
+        <input class="invoice-item-row__qty" type="text" inputmode="numeric" placeholder="0" value="${escapeHtml(item.quantity || "")}" />
+      </div>
+      <button type="button" class="btn-text btn-text--danger invoice-item-row__remove" data-action="remove-invoice-item">${escapeHtml(t("common.remove"))}</button>
+    </div>
+  `;
+}
+
+// Called by main.js's "add product line" button click — appends one empty row.
+export function addInvoiceItemRow(container) {
+  if (!container) return;
+  container.insertAdjacentHTML("beforeend", invoiceItemRowHtml());
+}
+
+// Called by main.js's delegated 'change' listener on a row's product <select>.
+export function updateInvoiceItemRowPrice(selectEl) {
+  const row = selectEl.closest(".invoice-item-row");
+  const priceEl = row?.querySelector(".invoice-item-row__price");
+  if (priceEl) priceEl.textContent = invoiceItemUnitPriceText(selectEl.value);
+}
 
 // Fixed backend enum for a completed visit's outcome.
 const VISIT_OUTCOMES = [
@@ -68,14 +125,14 @@ function fieldPassword(name, label, value, attrs = "") {
   `;
 }
 
-function fieldSelect(name, label, value, options) {
+function fieldSelect(name, label, value, options, attrs = "") {
   const opts = options
     .map((o) => `<option value="${escapeHtml(o.value)}" ${o.value === value ? "selected" : ""}>${escapeHtml(o.label)}</option>`)
     .join("");
   return `
     <div class="modal-field">
       <label for="fld-${name}">${escapeHtml(label)}</label>
-      <select id="fld-${name}" name="${escapeHtml(name)}">${opts}</select>
+      <select id="fld-${name}" name="${escapeHtml(name)}" ${attrs}>${opts}</select>
     </div>
   `;
 }
@@ -249,34 +306,36 @@ function buildFields(entity, record, mode, extra = {}) {
     ].join("");
   }
   if (entity === "invoice") {
+    invoiceProductOptions = extra.productOptions || [];
+    nextInvoiceRowId = 0;
     const customerOptions = extra.customerOptions || [];
-    const productOptions = extra.productOptions || [];
     const existingItems = record.items || [];
 
-    const itemRows = Array.from({ length: INVOICE_ITEM_ROW_COUNT }).map((_, index) => {
-      const item = existingItems[index] || {};
-      const productSelectOptions = [{ value: "", label: t("form.invoice.itemNone") }, ...productOptions];
-      return `
-        <div class="invoice-item-row">
-          ${fieldSelect(`item_${index}_productId`, t("form.invoice.itemProduct", { n: index + 1 }), item.productId || "", productSelectOptions)}
-          ${fieldText(`item_${index}_qty`, t("form.invoice.itemQty"), item.quantity || "", 'inputmode="numeric" placeholder="0"')}
-        </div>
-      `;
-    }).join("");
+    const itemRows = (existingItems.length ? existingItems : [{}])
+      .map((item) => invoiceItemRowHtml(item))
+      .join("");
 
     const customerField = customerOptions.length
       ? fieldSelect("customerId", t("form.invoice.customer"), record.customerId || "", customerOptions)
       : `<p class="modal-hint">${escapeHtml(t("modal.hint.invoiceNoCustomer"))}</p>`;
 
+    const discountType = record.discountType || "NONE";
+
     return [
       customerField,
       fieldText("dueDate", t("form.invoice.dueDate"), record.dueDate ? record.dueDate.split("T")[0] : "", 'type="date"'),
-      fieldSelect("discountType", t("form.invoice.discountType"), record.discountType || "NONE", [
+      `<p class="modal-hint">${escapeHtml(t("form.invoice.dueDateHint"))}</p>`,
+      fieldSelect("discountType", t("form.invoice.discountType"), discountType, [
         { value: "NONE", label: t("labels.discountType.none") },
         { value: "AMOUNT", label: t("labels.discountType.amount") },
         { value: "PERCENTAGE", label: t("labels.discountType.percentage") },
-      ]),
-      fieldText("discountValue", t("form.invoice.discountValue"), record.discountValue || "", 'inputmode="decimal" placeholder="0"'),
+      ], 'data-action="invoice-discount-type-change"'),
+      fieldText(
+        "discountValue",
+        t("form.invoice.discountValue"),
+        record.discountValue || "",
+        `inputmode="decimal" placeholder="0" ${discountType === "NONE" ? "disabled" : ""}`
+      ),
       fieldText("notes", t("form.invoice.notes"), record.notes || "", `placeholder="${escapeHtml(t("form.invoice.notesPh"))}"`),
       `<input type="hidden" name="source" value="MANUAL" />`,
       `
@@ -284,6 +343,7 @@ function buildFields(entity, record, mode, extra = {}) {
           <h4>${escapeHtml(t("invoices.itemsTitle"))}</h4>
           <p class="modal-hint">${escapeHtml(t("form.invoice.itemsHint"))}</p>
           <div class="invoice-items-list">${itemRows}</div>
+          <button type="button" class="secondary-btn" data-action="add-invoice-item">${escapeHtml(t("form.invoice.addItem"))}</button>
         </div>
       `,
     ].join("");
@@ -387,6 +447,33 @@ function buildCustomerPayload(payload) {
   return address ? { ...rest, address: { line1: address } } : rest;
 }
 
+// Only these two roles can both write invoices AND manage payment on the backend
+// (POST /invoices/:id/payment is COMPANY_ADMIN/SALES_MANAGER/ACCOUNTANT-only, and
+// ACCOUNTANT can't create invoices at all) — matches Phase 2's role map.
+const INVOICE_PAYMENT_ROLES = new Set(["administrator", "salesManager"]);
+
+// Confirming moves DRAFT -> CONFIRMED (assigns the real invoice number) and payment can only
+// be recorded on a confirmed invoice — so collecting a payment right after create means
+// confirming it first. Skipped entirely if the user declines/leaves the prompt blank.
+async function promptAndRecordInitialPayment(invoice) {
+  const totalAmount = Number(invoice?.totalAmount || 0);
+  if (!(totalAmount > 0)) return;
+
+  const raw = window.prompt(
+    t("form.payment.askAtCreate", { total: totalAmount, currency: invoice.currency || "" })
+  );
+  if (raw === null || raw.trim() === "") return;
+
+  const paidAmount = Number(raw);
+  if (!(paidAmount > 0)) return;
+
+  const invoiceId = invoice.id || invoice._id;
+  const confirmed = await confirmInvoice(invoiceId);
+  await recordInvoicePayment(confirmed.id || confirmed._id || invoiceId, {
+    paidAmount: Math.min(paidAmount, totalAmount),
+  });
+}
+
 const ASYNC_ENTITIES = new Set(["user", "customer", "inventory", "priceList", "priceItem", "invoice", "payment", "visit", "visitComplete"]);
 
 export async function handleEntityFormSubmit(form) {
@@ -428,25 +515,36 @@ export async function handleEntityFormSubmit(form) {
           await addPriceListItem(_priceListId, item);
         }
       } else if (entity === "invoice") {
-        const items = [];
-        for (let i = 0; i < INVOICE_ITEM_ROW_COUNT; i++) {
-          const productId = payload[`item_${i}_productId`];
-          const qty = Number(payload[`item_${i}_qty`]);
-          if (productId && qty > 0) items.push({ productId, quantity: qty });
-        }
+        const items = Array.from(form.querySelectorAll(".invoice-item-row")).reduce((acc, row) => {
+          const productId = row.querySelector(".invoice-item-row__product")?.value;
+          const qty = Number(row.querySelector(".invoice-item-row__qty")?.value);
+          if (productId && qty > 0) acc.push({ productId, quantity: qty });
+          return acc;
+        }, []);
         const invoicePayload = {
           customerId: payload.customerId,
           items,
           discountType: payload.discountType,
-          discountValue: payload.discountValue || 0,
+          discountValue: payload.discountType === "NONE" ? 0 : payload.discountValue || 0,
           dueDate: payload.dueDate,
           source: payload.source || "MANUAL",
           notes: payload.notes,
         };
-        if (mode === "edit" && recordId) await updateInvoice(recordId, invoicePayload);
-        else await createInvoice(invoicePayload);
+        let savedInvoice;
+        if (mode === "edit" && recordId) savedInvoice = await updateInvoice(recordId, invoicePayload);
+        else savedInvoice = await createInvoice(invoicePayload);
+
+        // Only admin/manager can both write invoices and manage payment on the backend —
+        // ask for an initial payment right after creating a fresh draft for those roles.
+        if (mode !== "edit" && INVOICE_PAYMENT_ROLES.has(appState.userRoleKey)) {
+          try {
+            await promptAndRecordInitialPayment(savedInvoice);
+          } catch (err) {
+            window.alert(`${t("form.payment.createdButPaymentFailed")}${err?.message || t("common.loadError")}`);
+          }
+        }
       } else if (entity === "payment") {
-        await recordInvoicePayment(recordId, { amount: payload.amount });
+        await recordInvoicePayment(recordId, { paidAmount: Number(payload.amount) });
       } else if (entity === "visit") {
         // Contract body field is `customer` (Phase 6 §40) — not customerId.
         const visitPayload = {
