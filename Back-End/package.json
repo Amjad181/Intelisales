@@ -1,35 +1,77 @@
-{
-  "name": "intelli-sales-backend",
-  "version": "1.0.0",
-  "description": "Backend API for the IntelliSales MVP.",
-  "main": "src/server.js",
-  "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "seed:price-lists": "node src/seeds/seedPriceLists.js",
-    "seed:products": "node src/seeds/seedProducts.js",
-    "seed:users": "node src/seeds/seedUsers.js",
-    "test": "jest --runInBand"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "helmet": "^8.2.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.7.2",
-    "morgan": "^1.11.0",
-    "pdfkit": "^0.19.1",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "jest": "^30.4.2",
-    "mongodb-memory-server": "^11.2.0",
-    "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
-  }
-}
+name: IntelliSales CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Back-End/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: Back-End
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: Back-End
+        run: npm test
+
+
+  mobile:
+    name: Flutter Mobile CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Flutter dependencies
+        working-directory: Front-End-MobileApplication
+        run: flutter pub get
+
+      - name: Analyze Flutter code
+        working-directory: Front-End-MobileApplication
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        working-directory: Front-End-MobileApplication
+        run: flutter test
+
+
+  web:
+    name: Web Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check web files
+        working-directory: Front-End-Web
+        run: |
+          test -f index.html
+          test -f dashboard.html
+          echo "Web frontend files exist"
